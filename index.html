@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Almere VO Schools Map</title>
+<meta name="description" content="All secondary schools in Almere classified by level, concept and school board, with distance and travel time from any Almere postcode. In Dutch, English and Chinese.">
+<meta property="og:title" content="Almere VO Schools Map">
+<meta property="og:description" content="Secondary schools in Almere by level, concept and board, with travel times from your postcode. NL · EN · 中文">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#121A21">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121A21'/%3E%3Cpath d='M12 46h40M18 46V30h8v16M30 46V22h8v24M42 46V14h8v32' stroke='%23FD8D75' stroke-width='4' fill='none'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: hero with postcode input → clickable level ladder + sortable grid with distance columns → clusters → special → concepts → boards → filterable, sortable directory. Trilingual NL / EN / 中文. Dark by default. */
+:root{
+  --bg:#121A21; --surface:#18232C; --raise:#1F2D38; --line:#2A3A47;
+  --fg:#EDF1F4; --muted:#93A3B0; --coral:#FD8D75; --pink:#ED4CB7;
+  --coral-soft:rgba(253,141,117,.14); --pink-soft:rgba(237,76,183,.14);
+  --dot-off:#26343F; --ok:#6FD3A8; --bad:#FF8A8A;
+  --f-display:"Outfit","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-body:"Outfit","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,"Noto Sans SC",monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#F5F6F8; --surface:#FFFFFF; --raise:#EEF1F4; --line:#DCE2E7;
+  --fg:#121A21; --muted:#5A6873; --coral:#D95E45; --pink:#C1308F;
+  --coral-soft:rgba(217,94,69,.10); --pink-soft:rgba(193,48,143,.10);
+  --dot-off:#E3E8EC; --ok:#1E8A5A; --bad:#C0392B; color-scheme:light;}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.55;padding-inline:20px;padding-block:0 64px}
+html[lang="zh"] body{line-height:1.7}
+.wrap{max-width:1180px;margin:0 auto}
+a{color:var(--coral);text-decoration-thickness:1px;text-underline-offset:3px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.2}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--coral)}
+.muted{color:var(--muted)}
+
+.topbar{display:flex;justify-content:flex-end;padding-top:20px}
+.lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface)}
+.lang button{font:500 13px var(--f-body);color:var(--muted);background:none;border:none;border-radius:999px;padding:6px 14px;cursor:pointer}
+.lang button[aria-pressed="true"]{background:linear-gradient(90deg,var(--coral),var(--pink));color:#121A21}
+
+header.hero{padding-block:28px 36px;border-bottom:1px solid var(--line);display:grid;gap:28px}
+.hero h1{font-size:clamp(34px,5.4vw,58px);font-weight:600;letter-spacing:-.02em;max-width:18ch}
+html[lang="zh"] .hero h1{letter-spacing:0;max-width:16em}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--coral),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{max-width:64ch;color:var(--muted);margin:0;font-size:17px}
+.stats{display:flex;flex-wrap:wrap;gap:12px 40px}
+.stat b{display:block;font-family:var(--f-display);font-size:34px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--fg)}
+.stat span{font-size:13px;color:var(--muted)}
+
+/* Postcode panel */
+.pc{display:grid;gap:10px;padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--surface);max-width:720px}
+.pc label{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--coral)}
+.pc-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pc input{font:600 20px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 14px;width:11ch;max-width:100%}
+.pc input:focus{border-color:var(--coral)}
+.pc button{font:600 14px var(--f-body);color:#121A21;background:linear-gradient(90deg,var(--coral),var(--pink));border:none;border-radius:8px;padding:12px 18px;cursor:pointer}
+.pc .status{font-size:14px;min-height:1.5em}
+.pc .status.ok{color:var(--ok)}
+.pc .status.bad{color:var(--bad)}
+.pc .help{font-size:12.5px;color:var(--muted);margin:0}
+
+section{padding-block:52px 0;display:grid;gap:22px}
+.sec-head{display:grid;gap:8px;max-width:72ch}
+.sec-head h2{font-size:clamp(24px,3vw,32px);font-weight:600}
+.sec-head p{margin:0;color:var(--muted)}
+
+/* Ladder */
+.ladder{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;font-size:12px}
+.ladder button{font:inherit;padding:10px 8px;border-radius:6px;background:var(--raise);border:1px solid transparent;text-align:center;color:var(--muted);line-height:1.3;cursor:pointer}
+.ladder button:hover{border-color:var(--coral)}
+.ladder button b{display:block;color:var(--fg);font-weight:600;font-size:13px}
+.ladder button[aria-pressed="true"]{background:var(--coral-soft);border-color:var(--coral);color:var(--fg)}
+.ladder button[aria-pressed="true"] b{color:var(--coral)}
+.ladder-axis{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.06em}
+.pick{font-size:14px;min-height:1.6em}
+.pick b{color:var(--coral);font-weight:600}
+.pick .clear{font:500 13px var(--f-body);color:var(--pink);background:none;border:none;cursor:pointer;padding:0;margin-left:8px;text-decoration:underline;text-underline-offset:3px}
+
+/* Matrix */
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:1060px;font-size:14px}
+th,td{padding:10px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+thead th{background:var(--raise);padding:0;vertical-align:bottom}
+thead th button{all:unset;box-sizing:border-box;display:flex;gap:4px;align-items:center;width:100%;padding:10px;cursor:pointer;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+thead th.c button{justify-content:center;text-align:center}
+thead th button:hover{color:var(--fg)}
+thead th button:focus-visible{outline:2px solid var(--pink);outline-offset:-2px}
+thead th[aria-sort="ascending"] button,thead th[aria-sort="descending"] button{color:var(--coral)}
+.arr{font-size:10px;opacity:.45}
+th[aria-sort="ascending"] .arr,th[aria-sort="descending"] .arr{opacity:1}
+thead th.c,td.c{text-align:center}
+th.trav{border-left:1px solid var(--line)}
+td.trav{border-left:1px solid var(--line)}
+td.name{font-weight:500}
+td.name small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--dot-off)}
+.dot.on{background:linear-gradient(135deg,var(--coral),var(--pink))}
+.dot.part{background:transparent;border:2px solid var(--coral)}
+td.note{color:var(--muted);font-size:13px;min-width:160px}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:13px}
+td.num b{color:var(--fg);font-weight:600}
+td.num small{display:block;color:var(--muted);font-size:11.5px;white-space:normal}
+td.num .na{color:var(--muted)}
+tr.dim td{opacity:.32}
+th.hot,td.hot{background:var(--coral-soft)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;color:var(--muted);align-items:center}
+.legend span{display:inline-flex;gap:8px;align-items:center}
+.legend .src{flex-basis:100%;font-size:12px;display:block}
+
+/* Clusters */
+.clusters{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.cluster{padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface);display:grid;gap:10px;align-content:start;min-width:0}
+.cluster .range{font-family:var(--f-mono);font-size:12px;color:var(--pink)}
+.cluster h3{font-size:19px;font-weight:600}
+.cluster p{margin:0;font-size:14px;color:var(--muted)}
+.cluster ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.cluster li{font-size:13px;padding:3px 10px;border-radius:999px;background:var(--raise)}
+
+.rows{display:grid;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:minmax(160px,240px) 1fr;gap:6px 28px;padding-block:18px;border-bottom:1px solid var(--line)}
+.row h3{font-size:17px;font-weight:600}
+.row h3 small{display:block;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--coral);font-weight:400;margin-top:4px}
+.row p{margin:0;color:var(--muted);font-size:15px;max-width:70ch}
+.row p b{color:var(--fg);font-weight:500}
+
+.boards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.board{padding:18px 20px;border-radius:10px;background:var(--raise);display:grid;gap:8px;align-content:start}
+.board h3{font-size:16px;font-weight:600}
+.board p{margin:0;font-size:14px;color:var(--muted)}
+.callout{font-size:13px;color:var(--muted);border-left:2px solid var(--pink);padding-left:12px;max-width:72ch;margin:0}
+
+/* Directory */
+.filters{display:grid;gap:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:500 13px var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer}
+.chip:hover{border-color:var(--coral)}
+.chip[aria-pressed="true"]{background:var(--coral-soft);border-color:var(--coral);color:var(--coral)}
+.frow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.search{font:400 15px var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;width:100%;max-width:420px}
+.sortsel{font:500 14px var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.count{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+@media (max-width:420px){.cards{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;display:grid;gap:12px;align-content:start;min-width:0}
+.card .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.card h3{font-size:20px;font-weight:600}
+.card .tag{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--pink)}
+.card .motto{margin:0;color:var(--coral);font-size:14px;font-weight:500}
+.lv{display:flex;flex-wrap:wrap;gap:5px}
+.lv span{font-family:var(--f-mono);font-size:11.5px;padding:3px 8px;border-radius:4px;background:var(--raise);color:var(--fg)}
+.lv span.sp{background:var(--pink-soft);color:var(--pink)}
+.trip-card{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 12px;border-radius:8px;background:var(--raise);font-size:13px;color:var(--muted)}
+.trip-card b{color:var(--fg);font-variant-numeric:tabular-nums}
+.card p.desc{margin:0;font-size:14.5px;color:var(--muted)}
+.card ul.hl{margin:0;padding-left:18px;font-size:14px;display:grid;gap:3px}
+.card ul.hl li::marker{color:var(--coral)}
+.contact{border-top:1px solid var(--line);padding-top:12px;font-size:13px;color:var(--muted);display:grid;gap:3px;overflow-wrap:anywhere}
+.contact b{color:var(--fg);font-weight:500;margin-right:4px}
+.empty{color:var(--muted);padding:24px 0}
+
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);display:grid;gap:6px}
+.terms{margin-top:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:0 16px}
+.terms summary{cursor:pointer;padding-block:12px;font-weight:600;color:var(--fg);font-size:14px}
+.terms summary:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+.terms ol{margin:0 0 14px;padding-left:20px;display:grid;gap:6px;max-width:80ch}
+.terms li::marker{color:var(--coral)}
+.terms p{margin:0 0 14px;font-size:12px}
+
+@media (max-width:640px){
+  .row{grid-template-columns:1fr}
+  .ladder{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .ladder-axis{display:none}
+}
+@media (prefers-reduced-motion:no-preference){.chip,.ladder button,.lang button{transition:background .15s,border-color .15s,color .15s} tr td{transition:opacity .2s,background .2s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="topbar">
+  <div class="lang" role="group" aria-label="Taal / Language / 语言">
+    <button type="button" id="lang-nl" data-l="nl" aria-pressed="false">NL</button>
+    <button type="button" id="lang-en" data-l="en" aria-pressed="true">EN</button>
+    <button type="button" id="lang-zh" data-l="zh" aria-pressed="false">中文</button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="eyebrow" data-t="heroEye"></div>
+  <h1 data-t="h1"></h1>
+  <p data-t="intro"></p>
+  <div class="stats">
+    <div class="stat"><b>18</b><span data-t="st1"></span></div>
+    <div class="stat"><b>14</b><span data-t="st2"></span></div>
+    <div class="stat"><b>4</b><span data-t="st3"></span></div>
+    <div class="stat"><b>1</b><span data-t="st4"></span></div>
+  </div>
+  <form class="pc" id="pcForm" autocomplete="off">
+    <label for="pc" data-t="pcLabel"></label>
+    <div class="pc-row">
+      <input id="pc" name="pc" inputmode="text" maxlength="7" spellcheck="false">
+      <button type="submit" id="pcGo" data-t="pcBtn"></button>
+    </div>
+    <div class="status" id="pcStatus" aria-live="polite"></div>
+    <p class="help" data-t="pcHelp"></p>
+  </form>
+</header>
+
+<section id="levels">
+  <div class="sec-head">
+    <div class="eyebrow" data-t="lvEye"></div>
+    <h2 data-t="lvH"></h2>
+    <p data-t="lvP"></p>
+  </div>
+  <div class="ladder-axis"><span data-t="axR"></span><span data-t="axL"></span></div>
+  <div class="ladder" id="ladder" role="group"></div>
+  <div class="pick" id="pick" aria-live="polite"></div>
+  <div class="scroll" role="region" aria-label="Levels per school" tabindex="0">
+    <table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="matrix"></tbody>
+    </table>
+  </div>
+  <div class="legend">
+    <span><i class="dot on"></i><span data-t="lg1"></span></span>
+    <span><i class="dot part"></i><span data-t="lg2"></span></span>
+    <span><i class="dot"></i><span data-t="lg3"></span></span>
+    <span class="src" data-t="sortHint"></span>
+    <span class="src" id="tripNote"></span>
+  </div>
+</section>
+
+<section id="clusters">
+  <div class="sec-head">
+    <div class="eyebrow" data-t="clEye"></div>
+    <h2 data-t="clH"></h2>
+    <p data-t="clP"></p>
+  </div>
+  <div class="clusters" id="clusterList"></div>
+</section>
+
+<section id="special">
+  <div class="sec-head">
+    <div class="eyebrow" data-t="spEye"></div>
+    <h2 data-t="spH"></h2>
+    <p data-t="spP"></p>
+  </div>
+  <div class="rows" id="specialList"></div>
+</section>
+
+<section id="concepts">
+  <div class="sec-head">
+    <div class="eyebrow" data-t="coEye"></div>
+    <h2 data-t="coH"></h2>
+    <p data-t="coP"></p>
+  </div>
+  <div class="rows" id="conceptList"></div>
+</section>
+
+<section id="boards">
+  <div class="sec-head">
+    <div class="eyebrow" data-t="boEye"></div>
+    <h2 data-t="boH"></h2>
+  </div>
+  <div class="boards" id="boardList"></div>
+  <p class="callout" data-t="boNote"></p>
+</section>
+
+<section id="directory">
+  <div class="sec-head">
+    <div class="eyebrow" data-t="dirEye"></div>
+    <h2 data-t="dirH"></h2>
+    <p data-t="dirP"></p>
+  </div>
+  <div class="filters">
+    <div class="chips" id="chips" role="group"></div>
+    <div class="frow">
+      <input class="search" id="q" type="search">
+      <select class="sortsel" id="dirSort"></select>
+    </div>
+    <div class="count" id="count"></div>
+  </div>
+  <div class="cards" id="cards"></div>
+</section>
+
+<footer>
+  <div data-t="ft1"></div>
+  <div data-t="ft2"></div>
+  <div data-t="ft3"></div>
+  <details class="terms" id="terms">
+    <summary data-t="tcH"></summary>
+    <div data-t="tcBody"></div>
+  </details>
+</footer>
+</div>
+
+<script>
+/* ---------- Postcode centroids: Almere PC5 (PC4 + first letter), from PDOK Locatieserver (Kadaster), Oct 2026.
+   Format "PC4:Lxxx,yyyy ..." → lat = 52.3 + xxx/1e4, lon = 5 + yyyy/1e4 ---------- */
+const PC_RAW=`1309:A1169,2196 B662,1666
+1311:G671,1725 H671,1749 J676,1777 K699,1774 L717,1787 P678,1825 R679,1851 S667,1843 X638,1758 Z676,1884
+1312:A756,2095 B759,2098 E754,1888 G742,1871 H693,1920 J706,1915 K714,1890 L710,1876 N723,1862 P716,1844 R726,1837 S770,1851 T775,1825 W737,1811 X742,1805
+1313:A841,2028 B846,2009 C836,1979 D828,1954 E816,2008 G811,1970 H801,1955 J823,1929 K849,1952 L862,2035 N794,2002
+1314:A832,2142 B776,2237 C769,2132 H806,2064 J787,2061 K797,2074 L814,2102 M840,2102 N786,2143 P820,2079 R803,2197 S800,2135 T778,2172 V776,2143 W771,2182
+1315:A689,2160 B686,2157 C690,2170 E713,2156 G719,2157 H720,2197 J725,2172 K740,2195 L729,2192 M717,2187 R705,2234 S670,2170 T685,2190 V700,2187 X703,2204
+1316:A867,2191 B786,2271 C820,2228 E834,2215 G842,2230 H855,2226 J874,2258 K890,2245 L858,2264 N857,2274 P854,2286 R873,2225 S814,2260 T925,2184 V919,2083
+1317:A868,2308 B890,2289 C895,2276 H887,2355 J880,2366 K877,2376 N918,2356 P906,2343 R909,2325 S905,2320
+1318:A793,2389 B787,2426 C806,2454 D785,2459 E901,2472 G857,2507 H845,2513 J840,2525 K818,2510 L803,2531 M771,2419 N840,2563 P826,2572 R813,2579
+1319:A866,1798 B868,1838 C898,1810 D950,1761 E926,1717 G986,1707 H826,1769
+1321:A600,1897 B592,1875 C610,1845 D595,1815 E622,1826 G573,1854 H568,1818 J546,1873 K552,1881 L527,1816 N515,1779 P550,1799 R560,1784 S551,1756 T581,1769 V595,1758
+1322:A510,1870 B489,1803 C476,1795
+1323:A673,2013 B661,2004 C646,1979 E645,1966 G633,1942 H622,1940 L662,1916 M696,1983 N681,1940 P671,1949 R661,1908 S644,1903 T635,1913 V639,1870
+1324:A729,2127 B724,2106 C700,2095 D603,2091 E670,2121 G656,2114 H635,2117 J631,2086 K572,1993 L626,2036 M592,2085 N635,2053 P663,2057 R677,2065 S645,2049 T603,1993 V607,2024 W589,2052 X582,2031 Z574,2042
+1325:A740,2260 C752,2320 E730,2298 G727,2320 H704,2303 J692,2310 K712,2353 L671,2368 N658,2398 P637,2415 R611,2445 S604,2402 T583,2440 V596,2420 W563,2255 X605,2508
+1326:A747,2410 B755,2479 C747,2431 D738,2512 E720,2460 G687,2487 H710,2533 J699,2544 L653,2520 M636,2536 N673,2568 P660,2585 R619,2551 S633,2583 T635,2612
+1327:A568,2500 C613,2608 E602,2600 G585,2592 H613,2627
+1328:A767,2563 B758,2573 C795,2612 D778,2616 E770,2613 G783,2656 H724,2591 J734,2616 K719,2630 L746,2691 M766,2732 N757,2666 P688,2631 R677,2659 S698,2665 T710,2721 V703,2706 W690,2688
+1329:A724,2755 B654,2728
+1331:A1153,2745 E1186,2656 G1247,2587
+1332:A1052,2533 B1107,2553 C1187,2377 E1085,2433
+1333:A981,2691 B1002,2700 C1015,2709 D969,2670 E995,2739 G984,2740 H990,2640 J965,2616 K964,2578 L989,2571 M1002,2600 N936,2562 P958,2530 S892,2618 T909,2649 V923,2677 W900,2672 X895,2697 Z864,2647
+1334:A952,2772 B937,2788 C967,2772 D953,2785 E970,2796 H948,2812 K947,2739 L941,2723 N945,2741 P934,2757
+1335:A1036,2903 B1026,2885 C1020,2883 D1014,2860 E1008,2840 G996,2864 H976,2893 J1021,3005 K1047,2827 L1066,2784 N1046,2933 P1052,2950 R1051,2969 S1085,2916 T1054,3015 V1073,2997 W1086,2989 X1107,2974
+1336:A1046,3123 B1036,3139 C1061,3173 D1046,3192 G1013,3156 H996,3178 J998,3202 K1032,3209 L1018,3234 M991,3233 N1063,3104 R1163,2991 S1091,3088 T1107,3057 Z1028,3287
+1338:A897,2739 B867,2724 C874,2753 E847,2776 G804,2801 H833,2685 J839,2721 K839,2762 L887,2777 M896,2804 N915,2803 P895,2812 R922,2832 S913,2848 T886,2836 V869,2833 W867,2851 X889,2880 Z876,2890
+1339:A965,2935 B961,2952 C960,2974 D979,2930 E942,2984 G912,2950 H923,3003 J917,3033 K947,3090 L886,3032 M956,3132 N966,3047 P972,3066 R980,3109 S1014,3071 T1005,3056 V995,3027 W992,3018 X984,3009
+1341:A472,2971 B575,2833 C572,2779 D608,2852 E598,2910 H665,2863 J628,2893
+1343:A408,3010 B391,3055 C409,3104 D464,2998 E451,3061
+1349:B445,3316 C386,3223 D547,3080 E345,3233 G722,3014 H464,3144 J234,3287 K298,3386 L565,3073 M673,3069 N380,3387 R245,3578 Z534,3048
+1351:A499,2250 E458,2224 G486,2201 H481,2275 J463,2194 K462,2162 L479,2160 N472,2127 P490,2134
+1352:A424,2201 B448,2169 C434,2124 E448,2139 G448,2097
+1353:A353,2177 B347,2157 C354,2118 D364,2062 E372,2052 G379,2128 H375,2098 J387,2076 K392,2039 L413,2054 N405,2086 P366,2051 X399,2113
+1354:A361,2199 B368,2185 C389,2200 E389,2170 G404,2173 H371,2195 J369,2231 K380,2159 L353,2187
+1355:A401,2244 B424,2278 C432,2286 E430,2242 G442,2262 H453,2302 J459,2278 K441,2322 L474,2300
+1356:A364,2347 B378,2371 C379,2326 E402,2365 G397,2386 H378,2410 J398,2410 K424,2399
+1357:A360,2250 B360,2281 C347,2322 D342,2277 E324,2309 G340,2362 H318,2378 J339,2409 N342,2196 P334,2217
+1358:A460,2700 B264,2789 C151,3115 D139,3236 E309,2530 G287,2606
+1359:H409,1922 J382,1920 K405,1971
+1361:A402,1373 B406,1422 C422,1495 D456,1392 E380,1462
+1362:A532,1662 G561,1682 J460,1614 K448,1584 L413,1553
+1363:B480,1521 C453,1494 D484,1447 K510,1436 L541,1405 R580,1591 S582,1540 T571,1499 V550,1545 W542,1491 X541,1521 Z576,1573
+1364:A837,1287 B661,1522`;
+const PC5={},PC4={};
+PC_RAW.split("\n").forEach(line=>{
+  const [p4,rest]=line.split(":");const pts=[];
+  rest.split(" ").forEach(tok=>{const L=tok[0];const [a,b]=tok.slice(1).split(",").map(Number);const ll=[52.3+a/1e4,5+b/1e4];PC5[p4+L]=ll;pts.push(ll)});
+  PC4[p4]=[pts.reduce((s,x)=>s+x[0],0)/pts.length,pts.reduce((s,x)=>s+x[1],0)/pts.length];
+});
+
+/* School coordinates (PDOK address geocoding) */
+const GEO={trin:[52.35753,5.19515],ovc:[52.39546,5.26491],wald:[52.37824,5.21935],poort:[52.34115,5.15752],park:[52.36551,5.24465],hp:[52.37517,5.23605],mont:[52.36661,5.28753],arte:[52.34597,5.15112],meer:[52.3363,5.21727],ech:[52.368,5.21196],bhc:[52.403,5.30262],aeres:[52.34775,5.16642],pro1:[52.36955,5.20116],pro2:[52.37249,5.27457],avt:[52.38947,5.25039],opdc:[52.38677,5.24624]};
+
+/* Measured Google Maps times are disabled in the public build. */
+const HOME_HASH=""; /* public build: no saved home address */
+const MEASURED={
+ "Trinitas Gymnasium":{tot:21,pt:7,walk:14,bike:7,line:"M4"},
+ "Oostvaarders College":{tot:29,pt:11,walk:10,wait:8,bike:19,line:"326 + M2"},
+ "Waldorf Almere":{walkOnly:20,bike:5},
+ "Poort Lyceum":{tot:30,pt:22,walk:8,bike:21,line:"M4"},
+ "Park Lyceum":{tot:21,pt:3,walk:18,bike:9,line:"M5"},
+ "Helen Parkhurst":{tot:20,pt:3,walk:17,bike:7,line:"M8"},
+ "Montessori Campus 0-18":{tot:38,pt:15,walk:23,bike:23,line:"M8"},
+ "Arte College":{tot:31,pt:22,walk:9,bike:19,line:"M4"},
+ "De Meergronden":{tot:17,pt:12,walk:5,bike:16,line:"M1"},
+ "Taalcentrum Kopklas":{tot:17,pt:12,walk:5,bike:16,line:"M1"},
+ "Echnaton":{walkOnly:4},
+ "Stad College":{walkOnly:20,bike:5},
+ "Buitenhout College":{tot:28,pt:13,walk:9,wait:6,bike:26,line:"M4 + Sprinter",train:true},
+ "Aeres VMBO Almere":{tot:25,pt:12,walk:13,bike:17,line:"M4"},
+ "Pro Almere":{tot:10,pt:3,walk:7,bike:4,line:"M4"},
+ "Aventurijn":{tot:29,pt:9,walk:12,wait:8,bike:13,line:"326 + M2"},
+ "OPDC Almere":{tot:29,pt:9,walk:12,wait:8,bike:13,line:"326 + M2"}
+};
+
+const SRC='<a href="https://www.kiesjeschoolinalmere.nl/vo-scholen-almere">kiesjeschoolinalmere.nl/vo-scholen-almere</a>';
+const OD='<a href="https://www.kiesjeschoolinalmere.nl/open-dagen">Open dagen</a>';
+const KK='<a href="https://www.kiesjeschoolinalmere.nl/het-kieskompas">KiesKompas</a>';
+const PDOK='<a href="https://www.pdok.nl/">PDOK</a>';
+
+const T={
+ nl:{
+  heroEye:"Voortgezet onderwijs · Almere · bron: kiesjeschoolinalmere.nl",
+  h1:"Zo zijn de middelbare scholen in Almere <em>ingedeeld</em>",
+  intro:"Alle scholen van Kies je school in Almere, ingedeeld op drie manieren: naar de niveaus die ze aanbieden, naar onderwijsconcept of profiel, en naar het schoolbestuur. Het niveau is de belangrijkste lens: dat bepaalt welke scholen openstaan voor een kind met een bepaald basisschooladvies.",
+  st1:"vermeldingen",st2:"reguliere scholen",st3:"speciaal of overgang",st4:"categoraal gymnasium",
+  pcLabel:"Jouw postcode in Almere",pcPh:"bijv. 1324 CT",pcBtn:"Bereken afstanden",
+  pcHelp:"Afstand en reistijd worden direct in je browser berekend. Je postcode verlaat deze pagina niet.",
+  pcEmpty:"Vul je postcode in om afstand, fietstijd en OV-tijd per school te zien.",
+  pcBad:"Deze postcode kennen we niet in Almere. Gebruik een postcode tussen 1309 en 1364, bijvoorbeeld 1324 CT.",
+  pcOk:(pc,area)=>`Afstanden berekend vanaf ${pc} (${area}).`,
+  pcOkHome:pc=>`Afstanden vanaf ${pc}. Voor dit adres zijn de OV-tijden gemeten in Google Maps.`,
+  area5:"precisie: buurtniveau, ±300 m",area4:"precisie: postcodegebied, ±1 km",
+  lvEye:"Lens 1 · Niveau",lvH:"De niveauladder",
+  lvP:"Het voortgezet onderwijs loopt van gymnasium tot praktijkonderwijs. De site noemt 17 scholen; het worden er 18 omdat ook de Taalcentrum Kopklas, een overgangsjaar, is opgenomen.",
+  axL:"praktischer",axR:"theoretischer",ladderLabel:"Kies een niveau",
+  pickHint:"Klik op een niveau om te zien welke scholen het aanbieden. De tabel en de schoolgids hieronder passen zich aan.",
+  pickRes:(n,l,list)=>`<b>${n} ${n===1?"school biedt":"scholen bieden"}</b> ${l} aan: ${list}.`,
+  pickCav:l=>`Met kanttekening: ${l} (zie opmerkingen).`,clear:"Wissen",
+  thSchool:"School",thNotes:"Opmerkingen",thKm:"Afstand",thBike:"Fiets",thPt:"OV",
+  lg1:"aangeboden",lg2:"aangeboden met kanttekening (zie opmerkingen)",lg3:"niet aangeboden",
+  sortHint:"Klik op een kolomkop om te sorteren; klik nogmaals om de volgorde om te draaien.",
+  noteEst:`Afstand en fietstijd: hemelsbreed × omrijfactor, gekalibreerd op Google Maps-routes in Almere. OV (≈) is een grove schatting; klik op ‘route’ voor de exacte reis. Postcodegegevens: ${PDOK}.`,
+  noteHome:`Gemeten in Google Maps op een doordeweekse middag; in de ochtendspits kan het iets afwijken. Postcodegegevens: ${PDOK}.`,
+  clEye:"Lens 1 · gegroepeerd",clH:"Zes groepen naar breedte",
+  clP:"Groeperen naar bereik maakt de keuze concreet. Brede scholen laten een kind van niveau wisselen zonder van school te wisselen. Smalle scholen specialiseren zich.",
+  spEye:"Buiten de ladder",spH:"Speciaal en overgangsonderwijs",
+  spP:"Vier vermeldingen passen niet in de gewone niveauladder. Drie vragen een toelaatbaarheidsverklaring (TLV) of een verwijzing. De vierde is een taaljaar van één jaar.",
+  coEye:"Lens 2 · Concept & profiel",coH:"Hoe elke school lesgeeft",
+  coP:"Binnen dezelfde niveaus maakt het onderwijsconcept het verschil in de dagelijkse praktijk.",
+  boEye:"Lens 3 · Schoolbestuur",boH:"Wie ze bestuurt",
+  boNote:"De site vermeldt geen besturen. Deze zijn afgeleid uit het e-maildomein van elke school (asg.nl, hetbaken.nl, aeres.nl, eduvier.nl, almere-speciaal.nl); controleer dit bij de school.",
+  dirEye:"Schoolgids",dirH:"Alle 18 vermeldingen",
+  dirP:"Filter op het advies van je kind, zoek op naam, concept of wijk, of sorteer op afstand.",
+  search:"Zoek: Dalton, tto, Poort, technasium…",chipsLabel:"Filter op niveau",
+  all:"Alle 18",special:"Speciaal / overgang",
+  sortBy:"Sorteren",sDefault:"Standaard (theoretisch eerst)",sAz:"Naam A–Z",sKm:"Afstand",sBike:"Fietstijd",sPt:"OV-tijd",
+  count:(n,t)=>`${n} van ${t} getoond`,empty:"Geen scholen gevonden. Wis de zoekterm of kies een ander niveau.",
+  addr:"Adres",phone:"Telefoon",email:"E-mail",board:"Bestuur",inferred:" (afgeleid)",site:"Naar website van de school",
+  fromHome:"Vanaf thuis",km:"km",min:"min",walk:"lopen",bike:"fiets",pt:"OV",ptTrain:"bus+trein",wait:"overstap",route:"route",
+  walkOnly:"lopen",multi:"meerdere locaties, school wijst toe",site1:"locatie",
+  ft1:`Bron: ${SRC}, geraadpleegd op 1 oktober 2026. Beschrijvingen zijn ingekort uit de eigen tekst van elke school op die pagina.`,
+  ft2:`Open dagen staan op de pagina ${OD} van de site. De ${KK}-vragenlijst helpt een passende school te vinden.`,
+  ft3:"Correctie: het adres van Aeres VMBO staat op de site als 1263 JA; het juiste is 1362 JA. De postcode van Buitenhout College (1335 JV) klopt.",
+  tcH:"Gebruiksvoorwaarden en disclaimer",
+  tcBody:`<ol><li><b>Alleen ter informatie.</b> Deze pagina is een onafhankelijk, persoonlijk overzicht om ouders te helpen oriënteren. Het is geen officiële publicatie van de scholen, de schoolbesturen, de gemeente Almere of Kies je school in Almere, en is daar niet mee verbonden.</li><li><b>Onder voorbehoud van wijzigingen.</b> De informatie is gebaseerd op openbare bronnen zoals geraadpleegd op 1 oktober 2026. Scholen kunnen hun aanbod, niveaus, concepten, adressen, contactgegevens, open dagen en toelatingsregels op elk moment wijzigen. Ook deze pagina kan zonder aankondiging worden aangepast of verwijderd.</li><li><b>Geen garantie.</b> Er wordt zorg besteed aan de juistheid, maar volledigheid, juistheid en actualiteit worden niet gegarandeerd. Vertalingen, samenvattingen, indelingen en de afgeleide schoolbesturen zijn interpretaties van de auteur.</li><li><b>Reistijden zijn schattingen.</b> Afstanden en reistijden zijn benaderingen op basis van postcodegebieden en een rekenmodel. Werkelijke reistijden hangen af van route, dienstregeling, weer en tijdstip. Controleer je reis altijd via een routeplanner.</li><li><b>Controleer bij de school.</b> Neem beslissingen over schoolkeuze, aanmelding of toelating pas na controle bij de school zelf en het samenwerkingsverband.</li><li><b>Geen aansprakelijkheid.</b> De auteur is niet aansprakelijk voor enige directe of indirecte schade, verlies of gevolgen die voortvloeien uit het gebruik van, of het vertrouwen op, de informatie op deze pagina, noch voor de inhoud van externe websites waarnaar wordt gelinkt.</li><li><b>Privacy.</b> Een ingevoerde postcode wordt alleen in je eigen browser verwerkt en niet naar de auteur verzonden. Wie op een routelink klikt, opent Google Maps en deelt de postcode met Google.</li></ol><p>Door deze pagina te gebruiken ga je akkoord met deze voorwaarden. Laatst bijgewerkt: 19 oktober 2026.</p>`
+ },
+ en:{
+  heroEye:"Voortgezet onderwijs · Almere · source: kiesjeschoolinalmere.nl",
+  h1:"How Almere's secondary schools <em>sort themselves</em>",
+  intro:"Every school on Kies je school in Almere, classified three ways: by the levels it teaches, by its pedagogical concept or profile, and by the board that runs it. The level grid is the primary lens. It decides which schools are even open to a child with a given basisschool advice.",
+  st1:"entries listed",st2:"regular schools",st3:"special or transitional",st4:"categorical gymnasium",
+  pcLabel:"Your postcode in Almere",pcPh:"e.g. 1324 CT",pcBtn:"Calculate distances",
+  pcHelp:"Distances and travel times are calculated in your browser. Your postcode never leaves this page.",
+  pcEmpty:"Enter your postcode to see distance, cycling time and public-transport time for every school.",
+  pcBad:"That postcode isn't in Almere. Use a postcode between 1309 and 1364, for example 1324 CT.",
+  pcOk:(pc,area)=>`Distances calculated from ${pc} (${area}).`,
+  pcOkHome:pc=>`Distances from ${pc}. Public-transport times for this address were measured in Google Maps.`,
+  area5:"precision: neighbourhood, ±300 m",area4:"precision: postcode area, ±1 km",
+  lvEye:"Lens 1 · Level",lvH:"The level ladder",
+  lvP:"Dutch secondary education runs from gymnasium down to praktijkonderwijs. The site lists 17 schools; it reaches 18 because the Taalcentrum Kopklas, a transition year, is also listed.",
+  axL:"more practical",axR:"more academic",ladderLabel:"Pick a level",
+  pickHint:"Click a level to see which schools offer it. The grid and the directory below update with your choice.",
+  pickRes:(n,l,list)=>`<b>${n} school${n===1?"":"s"}</b> offer ${l}: ${list}.`,
+  pickCav:l=>`With a caveat: ${l} (see notes).`,clear:"Clear",
+  thSchool:"School",thNotes:"Notes",thKm:"Distance",thBike:"Bike",thPt:"Transit",
+  lg1:"offered",lg2:"offered with a caveat (see notes)",lg3:"not offered",
+  sortHint:"Click a column header to sort; click again to reverse the order.",
+  noteEst:`Distance and cycling time: straight line × detour factor, calibrated on Google Maps routes in Almere. Transit (≈) is a rough estimate; click ‘route’ for the exact journey. Postcode data: ${PDOK}.`,
+  noteHome:`Measured in Google Maps on a weekday afternoon; morning rush hour may differ slightly. Postcode data: ${PDOK}.`,
+  clEye:"Lens 1 · grouped",clH:"Six clusters by breadth",
+  clP:"Grouping the grid by span shows the practical choice. Broad schools let a child move between levels without changing school. Narrow schools specialise.",
+  spEye:"Outside the grid",spH:"Special and transitional provision",
+  spP:"Four entries don't fit the regular level grid. Three need a toelaatbaarheidsverklaring (TLV) or a referral. The fourth is a one-year language bridge.",
+  coEye:"Lens 2 · Concept & profile",coH:"How each school teaches",
+  coP:"Within the same level band, the concept is what separates schools in daily life.",
+  boEye:"Lens 3 · School board",boH:"Who runs them",
+  boNote:"The site does not state boards. These are inferred from each school's email domain (asg.nl, hetbaken.nl, aeres.nl, eduvier.nl, almere-speciaal.nl), so check with the school.",
+  dirEye:"Directory",dirH:"All 18 entries in full",
+  dirP:"Filter by the level your child is advised for, search by name, concept or neighbourhood, or sort by distance.",
+  search:"Search: Dalton, tto, Poort, technasium…",chipsLabel:"Filter by level",
+  all:"All 18",special:"Special / transition",
+  sortBy:"Sort",sDefault:"Default (academic first)",sAz:"Name A–Z",sKm:"Distance",sBike:"Cycling time",sPt:"Transit time",
+  count:(n,t)=>`${n} of ${t} shown`,empty:"No schools match. Clear the search or choose another level.",
+  addr:"Address",phone:"Phone",email:"Email",board:"Board",inferred:" (inferred)",site:"Visit school website",
+  fromHome:"From home",km:"km",min:"min",walk:"walk",bike:"bike",pt:"transit",ptTrain:"bus+train",wait:"change",route:"route",
+  walkOnly:"walk",multi:"several locations, assigned by school",site1:"site",
+  ft1:`Source: ${SRC}, read 1 October 2026. Descriptions are condensed from each school's own text on that page.`,
+  ft2:`Open days are listed on the site's ${OD} page. The ${KK} questionnaire matches a child to schools.`,
+  ft3:"Correction: the site lists Aeres VMBO at 1263 JA; the correct postcode is 1362 JA. Buitenhout College's postcode (1335 JV) is correct.",
+  tcH:"Terms of use and disclaimer",
+  tcBody:`<ol><li><b>For information only.</b> This page is an independent, personal overview to help parents orient themselves. It is not an official publication of, and is not affiliated with, the schools, their boards, the Municipality of Almere or Kies je school in Almere.</li><li><b>Subject to change.</b> The information is based on public sources as read on 1 October 2026. Schools may change their programmes, levels, concepts, addresses, contact details, open days and admission rules at any time. This page may also be changed or removed without notice.</li><li><b>No warranty.</b> Care has been taken, but completeness, accuracy and timeliness are not guaranteed. Translations, summaries, classifications and the inferred school boards are the author's interpretation.</li><li><b>Travel times are estimates.</b> Distances and travel times are approximations based on postcode areas and a calculation model. Actual journeys depend on route, timetables, weather and time of day. Always check your journey in a route planner.</li><li><b>Verify with the school.</b> Make decisions about school choice, registration or admission only after confirming the details with the school itself and the samenwerkingsverband.</li><li><b>No liability.</b> The author is not liable for any direct or indirect damage, loss or consequence arising from the use of, or reliance on, the information on this page, nor for the content of external websites linked from it.</li><li><b>Privacy.</b> A postcode you enter is processed only in your own browser and is not sent to the author. Clicking a route link opens Google Maps and shares that postcode with Google.</li></ol><p>By using this page you accept these terms. Last updated: 19 October 2026.</p>`
+ },
+ zh:{
+  heroEye:"阿尔梅勒中学教育（VO）· 来源：kiesjeschoolinalmere.nl",
+  h1:"阿尔梅勒中学<em>分类全景</em>",
+  intro:"Kies je school in Almere 网站收录的全部学校，按三个维度分类：开设的学业层级、教学理念或特色，以及办学机构。层级是首要维度：它决定了持有某一小学升学建议（schooladvies）的孩子能报考哪些学校。",
+  st1:"收录条目",st2:"普通中学",st3:"特殊教育或过渡项目",st4:"独立文理中学",
+  pcLabel:"你在阿尔梅勒的邮编",pcPh:"例如 1324 CT",pcBtn:"计算距离",
+  pcHelp:"距离和通勤时间直接在浏览器中计算，邮编不会离开本页面。",
+  pcEmpty:"输入邮编，即可查看到每所学校的距离、骑车时间和公交时间。",
+  pcBad:"这个邮编不在阿尔梅勒。请输入 1309–1364 之间的邮编，例如 1324 CT。",
+  pcOk:(pc,area)=>`已按 ${pc} 计算距离（${area}）。`,
+  pcOkHome:pc=>`已按 ${pc} 计算距离。该地址的公交时间为 Google Maps 实测。`,
+  area5:"精度：街区级，约 ±300 米",area4:"精度：邮编片区，约 ±1 公里",
+  lvEye:"维度一 · 层级",lvH:"层级阶梯",
+  lvP:"荷兰中学教育从文理中学（gymnasium）一直到实践教育（praktijkonderwijs）。网站称共有 17 所学校；列表中有 18 个条目，因为过渡年项目 Taalcentrum Kopklas 也被列入。",
+  axL:"偏实践",axR:"偏学术",ladderLabel:"选择层级",
+  pickHint:"点击任一层级，查看开设该层级的学校。下方表格和学校名录会同步更新。",
+  pickRes:(n,l,list)=>`共 <b>${n} 所学校</b>开设 ${l}：${list}。`,
+  pickCav:l=>`有附加说明：${l}（见备注）。`,clear:"清除",
+  thSchool:"学校",thNotes:"备注",thKm:"距离",thBike:"骑车",thPt:"公交",
+  lg1:"开设",lg2:"开设，但有附加说明（见备注）",lg3:"不开设",
+  sortHint:"点击列标题即可排序，再次点击可反转顺序。",
+  noteEst:`距离与骑车时间：直线距离 × 绕行系数，按阿尔梅勒的 Google Maps 路线校准。公交（≈）为粗略估算；点击“路线”查看精确行程。邮编数据：${PDOK}。`,
+  noteHome:`于工作日下午在 Google Maps 实测；早高峰可能略有差异。邮编数据：${PDOK}。`,
+  clEye:"维度一 · 分组",clH:"按覆盖范围分为六类",
+  clP:"按覆盖层级分组后，选择更清晰：综合型学校让孩子无需转校即可在层级间调整；覆盖面窄的学校则更专精。",
+  spEye:"层级体系之外",spH:"特殊教育与过渡项目",
+  spP:"有四个条目不属于常规层级体系。其中三个需要入学许可（TLV）或转介，第四个是为期一年的语言衔接班。",
+  coEye:"维度二 · 理念与特色",coH:"各校的教学方式",
+  coP:"在同一层级范围内，真正区分日常学习体验的是教学理念。",
+  boEye:"维度三 · 办学机构",boH:"由谁开办",
+  boNote:"网站未标明办学机构。以上根据各校邮箱域名（asg.nl、hetbaken.nl、aeres.nl、eduvier.nl、almere-speciaal.nl）推断，请向学校核实。",
+  dirEye:"学校名录",dirH:"全部 18 个条目详情",
+  dirP:"按孩子的升学建议层级筛选，按校名、理念、街区搜索（三种语言均可），或按距离排序。",
+  search:"搜索：道尔顿、双语、Poort、technasium…",chipsLabel:"按层级筛选",
+  all:"全部 18",special:"特殊 / 过渡",
+  sortBy:"排序",sDefault:"默认（学术型在前）",sAz:"校名 A–Z",sKm:"距离",sBike:"骑车时间",sPt:"公交时间",
+  count:(n,t)=>`显示 ${n} / ${t}`,empty:"没有符合条件的学校。请清除搜索或选择其他层级。",
+  addr:"地址",phone:"电话",email:"邮箱",board:"办学机构",inferred:"（推断）",site:"访问学校网站",
+  fromHome:"从家出发",km:"公里",min:"分钟",walk:"步行",bike:"骑车",pt:"公交",ptTrain:"公交+火车",wait:"换乘",route:"路线",
+  walkOnly:"步行",multi:"多个校区，由学校分配",site1:"校区",
+  ft1:`来源：${SRC}，读取于 2026 年 10 月 1 日。各校介绍根据该页面上学校自己的文字精简整理。`,
+  ft2:`开放日见网站的 ${OD} 页面。${KK} 问卷可帮助匹配适合孩子的学校。`,
+  ft3:"更正：网站将 Aeres VMBO 的邮编写为 1263 JA，正确的是 1362 JA。Buitenhout College 的邮编（1335 JV）无误。",
+  tcH:"使用条款与免责声明",
+  tcBody:`<ol><li><b>仅供参考。</b>本页面是独立的个人整理，用于帮助家长了解情况。它不是各学校、办学机构、阿尔梅勒市政府或 Kies je school in Almere 的官方发布，也与上述机构无任何关联。</li><li><b>内容可能变更。</b>信息基于 2026 年 10 月 1 日查阅的公开资料。学校可能随时调整课程、层级、教学理念、地址、联系方式、开放日和招生规则。本页面也可能在不另行通知的情况下修改或删除。</li><li><b>不作保证。</b>作者已尽力确保准确，但不保证信息完整、准确或及时。翻译、摘要、分类及推断的办学机构均为作者的理解。</li><li><b>通勤时间为估算。</b>距离和通勤时间基于邮编片区和计算模型得出，仅为近似值。实际行程取决于路线、时刻表、天气和出行时段，请务必以路线规划工具为准。</li><li><b>请向学校核实。</b>有关择校、报名或录取的决定，请先向学校本身及区域合作联盟（samenwerkingsverband）核实后再作出。</li><li><b>免责。</b>对于因使用或依赖本页面信息而产生的任何直接或间接损害、损失或后果，以及本页面所链接的外部网站内容，作者概不负责。</li><li><b>隐私。</b>输入的邮编仅在你自己的浏览器中处理，不会发送给作者。点击路线链接会打开 Google Maps，并将该邮编提供给 Google。</li></ol><p>使用本页面即表示你接受以上条款。最后更新：2026 年 10 月 19 日。</p>`
+ }
+};
+
+const LADDER=[
+ {k:"g",b:"gymnasium",nl:"vwo + Latijn &amp; Grieks",en:"vwo + Latin &amp; Greek",zh:"vwo + 拉丁语和希腊语",full:{nl:"gymnasium",en:"gymnasium",zh:"gymnasium"},th:"gymn."},
+ {k:"v",b:"vwo",nl:"atheneum, 6 jaar → wo",en:"atheneum, 6 years → wo",zh:"6 年 → 研究型大学",full:{nl:"vwo",en:"vwo",zh:"vwo"},th:"vwo"},
+ {k:"h",b:"havo",nl:"5 jaar → hbo",en:"5 years → hbo",zh:"5 年 → 应用科技大学",full:{nl:"havo",en:"havo",zh:"havo"},th:"havo"},
+ {k:"gt",b:"vmbo-g/t",nl:"gemengd / theoretisch (= mavo)",en:"gemengd / theoretisch (= mavo)",zh:"混合 / 理论型（即 mavo）",full:{nl:"vmbo-g/t · mavo",en:"vmbo-g/t · mavo",zh:"vmbo-g/t · mavo"},th:"g/t · mavo"},
+ {k:"k",b:"vmbo-k",nl:"kader&shy;beroeps&shy;gericht",en:"kader&shy;beroeps",zh:"中级职业",full:{nl:"vmbo-k",en:"vmbo-k",zh:"vmbo-k"},th:"vmbo-k"},
+ {k:"b",b:"vmbo-b",nl:"basis&shy;beroeps&shy;gericht",en:"basis&shy;beroeps",zh:"基础职业",full:{nl:"vmbo-b",en:"vmbo-b",zh:"vmbo-b"},th:"vmbo-b"},
+ {k:"pro",b:"PrO",nl:"praktijk&shy;onderwijs",en:"praktijk&shy;onderwijs",zh:"实践教育",full:{nl:"praktijkonderwijs",en:"praktijkonderwijs",zh:"实践教育（PrO）"},th:"PrO"}
+];
+const COLS=LADDER.map(x=>x.k);
+
+const S=[
+ {n:"Aeres VMBO Almere",geo:["aeres"],m:"De groene school in Almere",lv:["vmbo-b","vmbo-k","vmbo-g"],L:{b:1,k:1,gt:2},
+  a:"Heliumweg 1, 1362 JA Almere",p:"088 020 5400",w:"https://www.aeresvmbo.nl/almere",e:"vmbo.almere@aeres.nl",k:"green groen agrarisch Poort",b:"Aeres",
+  nl:{t:"vmbo · groen",note:"alleen vmbo-g, geen vmbo-t",d:"Een overzichtelijke, ambitieuze vmbo-groenschool met brede doorstroommogelijkheden. Gewone vakken plus het profielvak Groen.",h:["Praktisch bezig met dierverzorging, planten en bloemen, techniek en koken","Bekend als veilige school met persoonlijke aandacht","Ongeveer 800 leerlingen, ook uit de regio"]},
+  en:{t:"vmbo · green",note:"vmbo-g only, no vmbo-t",d:"A clear, ambitious green vmbo with broad progression options. Regular subjects plus the profile subject Groen.",h:["Hands-on animal care, plants and flowers, technology and cooking","Known as a safe school with personal attention","About 800 pupils, including from outside Almere"]},
+  zh:{t:"vmbo · 绿色农林",note:"仅 vmbo-g，无 vmbo-t",d:"一所规模适中、目标远大的绿色 vmbo 学校，升学出口宽广。除常规科目外，还开设特色专业课“Groen（绿色）”。",h:["动手实践：动物护理、植物花卉、技术与烹饪","以安全和个性化关怀著称","约 800 名学生，部分来自阿尔梅勒周边"]}},
+ {n:"Arte College",geo:["arte"],m:"Geef kleur aan jouw talent!",lv:["vmbo-k","vmbo-t","havo","vwo"],L:{k:1,gt:1,h:1,v:1},
+  a:"Oostenrijkstraat 2, 1363 CB Almere",p:"036 767 0700",w:"http://www.artecollege.nl",e:"info@artecollege.asg.nl",k:"kunst theater Poort ASG",b:"ASG",
+  nl:{t:"kunst & cultuur",note:"geen vmbo-b",d:"Een vrij nieuw gebouw in Almere Poort vol kunst en cultuur. De aula wordt een echt theater met tribunes, coulissen en theatertechniek.",h:["Samenwerken is vanaf dag één de basis","Open, veilige sfeer waarin verschillen gewaardeerd worden","Gym in de topsporthallen van Almere Poort"]},
+  en:{t:"arts & culture",note:"no vmbo-b",d:"A fairly new building in Almere Poort full of art and culture. The aula converts into a real theatre with stands, wings and stage technique.",h:["Collaboration as the basis of teaching from day one","Open, safe atmosphere where differences are valued","PE in the topsport halls in Almere Poort"]},
+  zh:{t:"艺术与文化",note:"不设 vmbo-b",d:"位于 Almere Poort 一栋较新的特色建筑内，处处洋溢艺术与文化气息。礼堂可变身为配有看台、侧幕和舞台技术的正式剧场。",h:["从入学第一天起以合作为教学基础","开放、安全的氛围，尊重差异","体育课在 Almere Poort 的专业体育馆上"]}},
+ {n:"Aventurijn",geo:["avt"],sp:true,m:"De school waar jij jezelf mag zijn!",L:{},
+  a:"Marathonlaan 13, 1318 ED Almere",p:"036 549 19 18",w:"http://aventurijn.almere-speciaal.nl",e:"directie.aventurijn@almere-speciaal.nl",k:"speciaal VSO beperking",b:"Almere Speciaal",
+  nl:{t:"VSO · TLV",lv:["voortgezet speciaal onderwijs"],note:"speciaal onderwijs, buiten de ladder",d:"Voortgezet speciaal onderwijs voor leerlingen van 12–18 jaar met een lichamelijke en/of verstandelijke beperking. Kernwaarden: veiligheid, eigenaarschap en lef.",h:["Onderwijs afgestemd op de uitstroom: dagbesteding, werk of vervolgopleiding","TLV nodig, samen met ouders aangevraagd bij het samenwerkingsverband","Open avond: dinsdag 13 januari 2026"]},
+  en:{t:"VSO · TLV",lv:["voortgezet speciaal onderwijs"],note:"special education, outside the grid",d:"Voortgezet speciaal onderwijs for ages 12–18 with a physical and/or intellectual disability. Core values: safety, ownership and courage.",h:["Teaching tailored to the destination: day activities, work, or further study","Requires a TLV, applied for with parents via the samenwerkingsverband","Open evening: Tuesday 13 January 2026"]},
+  zh:{t:"特殊教育 · 需 TLV",lv:["特殊中等教育（VSO）"],note:"特殊教育，不在层级体系内",d:"面向 12–18 岁、有身体和/或智力障碍学生的特殊中等教育（VSO）。核心价值：安全、自主、勇气。",h:["根据学生未来去向定制教学：日间活动、就业或继续深造","需 TLV，由学校与家长一起向区域合作联盟（samenwerkingsverband）申请","开放日：2026 年 1 月 13 日（周二）"]}},
+ {n:"Buitenhout College",geo:["bhc"],m:"We do more",lv:["vmbo-b","vmbo-k","mavo","beroepsgerichte mavo"],L:{b:1,k:1,gt:1},
+  a:"Ambonstraat 2, 1335 JV Almere",p:"036 549 1600",w:"https://www.buitenhoutcollege.nl",e:"informatie@buitenhoutcollege.nl",k:"Buiten Oostvaarders",b:"—",
+  nl:{t:"vmbo · mavo",note:"incl. beroepsgerichte mavo",d:"Een school voor ambitieuze jongeren: theoretische en beroepsgerichte mavo, vmbo-kader en vmbo-basis.",h:["Grote school, maar les in kleinere units met een vast team docenten","Naschools: extra sport, schaken, zwemmen en een debattoernooi","Goed bereikbaar met het openbaar vervoer"]},
+  en:{t:"vmbo · mavo",note:"incl. vocational-oriented mavo",d:"A school for ambitious young people: theoretical and vocational mavo, vmbo-kader and vmbo-basis.",h:["Large school, but you work in smaller units with a limited set of teachers","After-school sport, chess, swimming and a debate tournament","Good public transport connections"]},
+  zh:{t:"vmbo · mavo",note:"含职业导向型 mavo",d:"为有抱负的年轻人而设：理论型和职业导向型 mavo、vmbo-kader 与 vmbo-basis。",h:["学校规模大，但学生在较小单元内上课，任课老师相对固定","课后活动：加练体育、国际象棋、游泳、辩论赛","公共交通便利"]}},
+ {n:"De Meergronden",geo:["meer"],m:"Ontdek wat jij leuk vindt! Discover the world!",lv:["vmbo-b","vmbo-k","vmbo-t","mavo","havo","vwo"],L:{b:1,k:1,gt:1,h:1,v:1},
+  a:"Marktgracht 65, 1353 AL Almere",p:"036 547 2727",w:"https://www.meergronden.nl",e:"info@meergronden.asg.nl",k:"tweetalig tto Haven ASG international",b:"ASG",
+  nl:{t:"breed · tto",note:"breedste aanbod; tto; gemengde brugklassen",d:"Ontdek waar je goed in bent en wat je leuk vindt, met een internationale blik. Alle niveaus zijn aanwezig, dus wisselen van school is niet nodig.",h:["Tweetalig onderwijs (tto) op mavo, havo en vwo, met internationaal certificaat","Experience-lessen over een zelfgekozen onderwerp","Gemengde brugklassen; uitwisselingen en reizen","Hier zit ook de Taalcentrum Kopklas"]},
+  en:{t:"broad · tto",note:"broadest range; tto; mixed first-year classes",d:"Discover what you are good at and what you enjoy, with an international outlook. All levels are present, so a child need not change school.",h:["Tweetalig onderwijs (tto) at mavo, havo and vwo, with an international certificate","Experience lessons on topics the pupil chooses","Mixed first-year classes; exchanges and trips","Hosts the Taalcentrum Kopklas"]},
+  zh:{t:"综合型 · 双语",note:"层级覆盖最广；双语教学；混合一年级",d:"既发现自己擅长什么，更发现自己热爱什么，并培养国际视野。全部层级都在校内，孩子无需转校。",h:["mavo、havo、vwo 均可选双语教学（tto），毕业另获国际认证证书","Experience 课程：自选感兴趣的主题","混合一年级；国际交换与游学","Taalcentrum Kopklas 设在本校"]}},
+ {n:"Echnaton",geo:["ech"],m:"Leren in beweging",lv:["vmbo-b","vmbo-k","mavo","havo"],L:{b:1,k:1,gt:1,h:1},
+  a:"Zwolleweg 1, 1324 EL Almere",p:"036 533 1220",w:"https://www.echnaton.nl",e:"info@echnaton.nl",k:"sport business talent",b:"—",
+  nl:{t:"breed · talentroute",note:"Businesshavo; combinatieklassen",d:"Uitdagend, ondernemend onderwijs plus de echTalent-route, een keuzetraject dat twee keer per jaar wisselt.",h:["D&O-plein voor technische, digitale en culinaire projecten","Kleinschalige Businesshavo","Combinatieklassen voor twijfelaars en laatbloeiers","Richtingen: Media & Broadcasting, Arts & Entertainment, Food & Health, Technology & Design"]},
+  en:{t:"broad · talent route",note:"Businesshavo; combination classes",d:"Challenging, entrepreneurial teaching plus the echTalent route, a choice track that changes twice a year.",h:["D&O square for technical, digital and culinary projects","Small-scale Businesshavo","Combination classes for doubters and late bloomers","Tracks: Media & Broadcasting, Arts & Entertainment, Food & Health, Technology & Design"]},
+  zh:{t:"综合型 · 才艺路线",note:"商业 havo；组合班",d:"富有挑战和创业精神的教学，外加 echTalent 才艺路线，每年可更换两次方向。",h:["D&O 实践广场：技术、数字和烹饪项目","小规模的 Businesshavo（商业 havo）","为犹豫不决或后发型学生设组合班","方向：媒体与广播、艺术与娱乐、食品与健康、技术与设计"]}},
+ {n:"Helen Parkhurst",geo:["hp"],m:"Jouw keuze telt",lv:["mavo","havo","vwo"],L:{gt:1,h:1,v:1},
+  a:"Bongerdstraat 1, 1326 AA Almere",p:"036 535 7000",w:"http://www.helenpark.nl",e:"info@helenparkhurst.asg.nl",k:"dalton technasium topsport ASG 道尔顿",b:"ASG",
+  nl:{t:"Dalton",note:"technasium; bèta mavo; topsport",d:"Een daltonschool waar leerlingen leren zelf keuzes te maken en hun werk per periode van zes weken plannen met hun mentor.",h:["Technasiumklas bij havo/vwo-advies","Bèta mavo-klas","Geschikt voor topsporters"]},
+  en:{t:"Dalton",note:"technasium; bèta mavo; topsport",d:"A Dalton school where pupils learn to make their own choices and plan their own work in six-week periods with their mentor.",h:["Technasium class for havo/vwo advice","Bèta mavo class","Suitable for topsport pupils"]},
+  zh:{t:"道尔顿制",note:"technasium 技术班；理科 mavo；体育精英",d:"道尔顿制学校：学生学习自主选择，并与导师一起规划每六周一个周期的学业。",h:["面向 havo/vwo 建议学生的 technasium（技术创新）班","理科 mavo 班（bèta mavo）","适合体育精英学生"]}},
+ {n:"Montessori Campus 0-18",geo:["mont"],m:"De school waar je jezelf kan zijn",lv:["vmbo-t","mavo","havo","vwo"],L:{gt:1,h:1,v:1},
+  a:"Rosalind Franklinweg 4, 1341 HZ Almere",p:"036 767 6886",w:"https://www.montessoricampus.nl/",e:"secretariaat@montesoricampus.asg.nl",k:"montessori Nobelhorst Hout ASG 蒙特梭利",b:"ASG",
+  nl:{t:"Montessori",note:"doorlopende campus 0–18",d:"Een campus in Nobelhorst waar kinderen opgroeien van baby tot jongvolwassene, met soepele overgangen op 4 en 12 jaar.",h:["Vrijheid in gebondenheid: eigen keuzes, eigen tempo, kleine groepjes","Een persoonlijke coach die begeleidt en motiveert","Veel aandacht voor veiligheid, gelijkwaardigheid en vertrouwen"]},
+  en:{t:"Montessori",note:"continuous 0–18 campus",d:"A campus in Nobelhorst where children grow from baby to young adult, with smooth transitions at ages 4 and 12.",h:["Freedom within limits: own choices, own pace, small groups","A personal coach who guides and motivates","Strong emphasis on safety, equality and trust"]},
+  zh:{t:"蒙特梭利",note:"0–18 岁一贯制园区",d:"位于 Nobelhorst 的园区，孩子从婴儿成长到青年，在 4 岁和 12 岁时平稳过渡。",h:["“有约束的自由”：自主选择、自定节奏、小组学习","每位学生配有教练（coach）指导与激励","高度重视安全、平等与信任"]}},
+ {n:"Nautilus College",geo:[],sp:true,m:"Speciaal onderwijs op maat",L:{},
+  a:"Lierstraat 17 · Paul Kleestraat 35 · Radioweg 35, Almere",p:"036 53 68 233",w:"https://www.eduvier.nl/nautiluscollege/",e:"nautiluscollege@eduvier.nl",k:"speciaal autisme gedrag Eduvier",b:"Eduvier",
+  nl:{t:"VSO · TLV",lv:["VSO: praktijk → vmbo → havo/vwo"],note:"speciaal onderwijs, buiten de ladder",d:"Voortgezet speciaal onderwijs voor leerlingen met externaliserend gedrag of autisme, van praktijkniveau tot havo/vwo.",h:["Vaste lestijden, vaste mentor, klassen van maximaal 16","Aandacht voor leren leren en sociale vaardigheden (TOP's!, Rots en Water)","TLV nodig; de school kiest samen met je de passende locatie"]},
+  en:{t:"VSO · TLV",lv:["VSO: praktijk → vmbo → havo/vwo"],note:"special education, outside the grid",d:"Voortgezet speciaal onderwijs for pupils with externalising behaviour or autism, at levels from praktijk to havo/vwo.",h:["Fixed timetable, fixed mentor, classes of at most 16","Attention to learning to learn and social skills (TOP's!, Rots en Water)","Requires a TLV; the school helps pick the right location"]},
+  zh:{t:"特殊教育 · 需 TLV",lv:["VSO：实践 → vmbo → havo/vwo"],note:"特殊教育，不在层级体系内",d:"面向有外化行为问题或自闭症谱系学生的特殊中等教育，层级从实践教育到 havo/vwo。",h:["固定课表、固定导师，每班最多 16 人","重视学习方法与社交技能（TOP's!、Rots en Water 等课程）","需 TLV；学校协助选择合适校区"]}},
+ {n:"Oostvaarders College",geo:["ovc"],m:"Jouw weg naar succes",lv:["havo","atheneum","gymnasium"],L:{h:1,v:1,g:1},
+  a:"A. Boekenweg 3, 1333 VD Almere",p:"036 549 2492",w:"https://www.ovc.nl",e:"directiesecretariaat@ovc.asg.nl",k:"gymnasium atheneum UNESCO Buiten ASG OVC",b:"ASG",
+  nl:{t:"havo · vwo",note:"inclusief gymnasium",d:"De school voor een havo-, atheneum- of gymnasiumdiploma. Een grote school, georganiseerd in teams, zodat docenten elke leerling kennen.",h:["Talentklassen, excursies, sport en cultuur","Internationaal Unesco-congres, debatteam, Wiskunde Olympiade","Roeiwedstrijden en een schaakclub"]},
+  en:{t:"havo · vwo",note:"includes a gymnasium stream",d:"The place for a havo, atheneum or gymnasium diploma. A large school organised in teams, so teachers know each pupil.",h:["Talent classes, excursions, sport and culture","International UNESCO congress, debate team, Wiskunde Olympiade","Rowing competitions and a chess club"]},
+  zh:{t:"havo · vwo",note:"含 gymnasium 方向",d:"攻读 havo、atheneum 或 gymnasium 文凭的理想学校。规模较大，但以团队形式组织，老师真正了解每位学生。",h:["天赋班、校外考察、体育与文化活动","国际 UNESCO 大会、辩论队、数学奥林匹克","赛艇比赛与国际象棋俱乐部"]}},
+ {n:"OPDC Almere",geo:["opdc"],sp:true,m:"Onderwijs en begeleiding op maat",L:{},
+  a:"Discuslaan 3, 1318 EJ Almere",p:"036 53 27 456",w:"https://www.opdc-almere.nl/",e:"info@opdc-almere.nl",k:"OPDC dyslexie kleinschalig",b:"—",
+  nl:{t:"overgang",lv:["1–2 jaar tussenstap → vmbo"],note:"tussenstap, buiten de ladder",d:"Een orthopedagogisch-didactisch centrum voor kinderen die nog niet klaar zijn voor een grote school, door zelfvertrouwen, concentratie, structuur, dyslexie of leerachterstanden.",h:["Ongeveer 120 leerlingen; klassen van 14–16; 6–8 docenten","Elke dag begint bij de mentor","Na 1–2 jaar door naar een reguliere vmbo-school","Open dag: donderdag 12 maart, 15–17 en 19–21 uur"]},
+  en:{t:"transition",lv:["1–2 year bridge → vmbo"],note:"intermediate step, outside the grid",d:"An orthopedagogical-didactic centre for children not yet ready for a large school because of confidence, concentration, structure, dyslexia or learning delays.",h:["About 120 pupils; classes of 14–16; 6–8 teachers","Every day starts with the mentor","Moves on to a regular vmbo after 1–2 years","Open day: Thursday 12 March, 15–17h and 19–21h"]},
+  zh:{t:"过渡学校",lv:["1–2 年过渡 → vmbo"],note:"过渡阶段，不在层级体系内",d:"教育学-教学法中心，面向因自信、专注力、结构感、阅读障碍或学习滞后等原因，尚未准备好进入大型中学的孩子。",h:["约 120 名学生；每班 14–16 人；6–8 位任课老师","每天从导师时间开始","1–2 年后转入普通 vmbo","开放日：3 月 12 日（周四）15–17 点、19–21 点"]}},
+ {n:"Park Lyceum",geo:["park"],m:"Een stevige basis voor een mooie toekomst",lv:["mavo","havo","vwo"],L:{gt:1,h:1,v:1},
+  a:"Buñuellaan 4, 1325 PL Almere",p:"036 523 8108",w:"https://www.hetbaken.nl/hetbaken/parklyceum/",e:"parklyceum@hetbaken.nl",k:"Het Baken Cambridge Parkwijk",b:"Het Baken",
+  nl:{t:"interconfessioneel",note:"gestructureerd klassikaal onderwijs",d:"Goed klassikaal onderwijs in een veilig klimaat, met een vaste lesopbouw (de Parkles). Een interconfessionele school.",h:["Heldere gedragsafspraken vanaf leerjaar 1","Cambridge-, Goethe- en DELF-certificaten","Gildeplan voor muziek, drama en dans; kartteam; uitwisselingen"]},
+  en:{t:"interconfessional",note:"structured classroom teaching",d:"Good classroom teaching in a safe climate, using a fixed lesson structure (the Parkles). An interconfessional school.",h:["Clear behaviour agreements from year 1","Cambridge, Goethe and DELF language certificates","Gildeplan for music, drama and dance; kart team; exchanges"]},
+  zh:{t:"跨宗派",note:"结构化课堂教学",d:"在安全的氛围中提供优质课堂教学，采用固定课堂结构（Parkles）。一所跨宗派学校。",h:["一年级起即建立明确的行为约定","剑桥英语、歌德德语、DELF 法语证书","音乐、戏剧、舞蹈 Gildeplan；卡丁车队；国际交换"]}},
+ {n:"Poort Lyceum",geo:["poort"],m:"Jouw ticket tot talent",lv:["mavo","havo","vwo"],L:{gt:1,h:1,v:1},
+  a:"Pim Mulierstraat 102, 1362 LC Almere",p:"036 845 2300",w:"https://www.hetbaken.nl/hetbaken/poort/",e:"poortlyceum@hetbaken.nl",k:"Het Baken Poort",b:"Het Baken",
+  nl:{t:"differentiatie",note:"differentiëren op tempo en niveau",d:"Klassikale instructie plus zelfwerktijd. Snelle leerlingen mogen lestijd aan een ander vak besteden of op hoger niveau werken.",h:["Elke twee weken een persoonlijk mentorgesprek","30% haalt een diploma boven het basisschooladvies (cijfer van de school)","Drie jaar op rij bijna 100% geslaagd (cijfer van de school)","Online lesplanners; de boeken zijn van de leerling"]},
+  en:{t:"differentiation",note:"pace and level differentiation",d:"Classroom instruction plus self-study time. Faster pupils may use lesson time for other subjects or work at a higher level.",h:["Personal mentor conversation every two weeks","30% graduate above their primary-school advice (school's own figure)","Pass rate near 100% three years running (school's own figure)","Online lesson planners; pupils own their books"]},
+  zh:{t:"差异化教学",note:"按进度与难度差异化",d:"课堂讲授加自主学习时间。进度快的学生可把课时用于其他科目，或挑战更高层级的作业。",h:["每两周一次一对一导师面谈","30% 的学生以高于小学建议的层级毕业（学校自报数据）","连续三年毕业考试通过率接近 100%（学校自报数据）","课程计划在线可查；课本归学生所有"]}},
+ {n:"Pro Almere",geo:["pro1","pro2"],geoNames:["Bachweg","Koningsbeltstraat"],m:"Leren door te doen",lv:["praktijkonderwijs"],L:{pro:1},
+  a:"J.S. Bachweg 7 · Koningsbeltstraat 4 · Tom Poesstraat 2, Almere",p:"036 533 8141",w:"http://www.proalmere.nl",e:"info@proalmere.asg.nl",k:"praktijk PrO ASG Muziekwijk",b:"ASG",
+  nl:{t:"praktijkonderwijs",note:"TLV praktijkonderwijs nodig",d:"Een praktische opleiding richting werk en zelfstandig burgerschap, met veel aandacht voor persoonlijke ontwikkeling.",h:["Drie locaties van elk ongeveer 200 leerlingen","Bachweg (Muziekwijk), Koningsbeltstraat (Tussen de Vaarten), Tom Poesstraat (Buiten, pas vanaf leerjaar 3)","Regelmatige coachgesprekken met een vaste mentor"]},
+  en:{t:"praktijkonderwijs",note:"TLV praktijkonderwijs required",d:"A practical education toward work and independent living, with a lot of attention to personal development.",h:["Three locations of about 200 pupils each","Bachweg (Muziekwijk), Koningsbeltstraat (Tussen de Vaarten), Tom Poesstraat (Buiten, year 3+ only)","Regular coaching with a fixed mentor"]},
+  zh:{t:"实践教育",note:"需实践教育 TLV",d:"实用型教育，培养学生成为合格员工和独立公民，高度重视个人发展。",h:["三个校区，每个约 200 名学生","Bachweg（Muziekwijk）、Koningsbeltstraat（Tussen de Vaarten）、Tom Poesstraat（Almere Buiten，仅三年级起）","固定导师定期辅导"]}},
+ {n:"Stad College",geo:["wald"],m:"Ontdek jouw vak",lv:["vmbo-b","vmbo-k","vmbo-g","vmbo-t","havo"],L:{b:1,k:1,gt:1,h:2},
+  a:"Rooseveltweg 5, 1314 SJ Almere",p:"036 530 7207",w:"https://www.hetbaken.nl/hetbaken/stadcollege/",e:"stadcollege@hetbaken.nl",k:"vakcollege vakhavo Het Baken Stad centrum",b:"Het Baken",
+  nl:{t:"vakcollege · vakhavo",note:"havo als beroepsgerichte Vakhavo",d:"Leren door te doen. Vanaf leerjaar 1 beroepsgerichte praktijklessen, bedrijfsbezoeken en gastdocenten. Ongeveer 400 leerlingen, vijf minuten lopen van station Almere Centrum.",h:["Richtingen: Technologie & Vakmanschap, Media Vormgeving & ICT, Zorg & Welzijn","Les op het tempo en niveau van elke leerling","Stages bij bedrijven"]},
+  en:{t:"vakcollege · vakhavo",note:"havo as vocational Vakhavo",d:"Learning by doing. Vocational practical lessons from year 1, company visits and guest teachers. About 400 pupils, five minutes from Almere Centrum station.",h:["Streams: Technology & Craftsmanship, Media Design & ICT, Care & Welfare","Teaching adjusted to each pupil's pace and level","Internships with companies"]},
+  zh:{t:"职业学院 · 职业 havo",note:"havo 为职业导向的 Vakhavo",d:"在做中学。一年级起即有职业实践课、企业参访和行业讲师授课。约 400 名学生，距 Almere Centrum 车站步行不到五分钟。",h:["方向：技术与工艺、媒体设计与 ICT、护理与福利","按每位学生的进度和水平调整教学","在企业实习"]}},
+ {n:"Trinitas Gymnasium",geo:["trin"],m:"Geeft richting",lv:["gymnasium"],L:{g:1},
+  a:"Sas van Gentlaan 6, 1324 CT Almere",p:"036 845 2400",w:"https://www.hetbaken.nl/hetbaken/trinitasgymnasium/",e:"trinitasgymnasium@hetbaken.nl",k:"gymnasium Latijn Grieks Het Baken",b:"Het Baken",
+  nl:{t:"categoraal gymnasium",note:"het enige zelfstandige gymnasium",d:"Modern gymnasiumonderwijs met Griekse en Romeinse taal en cultuur, filosofie en actualiteit.",h:["Breed extra aanbod: theater, schaken, debatteren, informatica en robotica","Veel leerlingen die extra uitdaging zoeken","Leerlingen noemen het overzichtelijk, veilig en een plek om jezelf te zijn"]},
+  en:{t:"categorical gymnasium",note:"the only gymnasium-only school",d:"Modern gymnasium teaching with Greek and Roman language and culture, philosophy and current affairs.",h:["Broad extras: theatre, chess, debate, informatics and robotics","Many pupils who look for extra challenge","Pupils describe it as clear, safe and a place to be yourself"]},
+  zh:{t:"独立文理中学",note:"唯一只开设 gymnasium 的学校",d:"现代文理中学教育，涵盖古希腊罗马语言与文化、哲学和时事。",h:["丰富的拓展活动：戏剧、国际象棋、辩论、信息学和机器人","许多学生追求额外挑战","学生评价：清晰、安全、可以做自己"]}},
+ {n:"Taalcentrum Kopklas",geo:["meer"],sp:true,m:"Hoger uitstromen via taal",L:{},
+  a:"Marktgracht 65, 1353 AL Almere (De Meergronden)",p:"—",w:"https://www.taalcentrumalmere.nl",e:"kopklas@taalcentrumalmere.nl",k:"NT2 Nederlands taal kopklas",b:"—",
+  nl:{t:"schakeljaar",lv:["1 jaar → advies vmbo-tl / havo / vwo"],note:"taaljaar, buiten de ladder",d:"Een intensief jaar Nederlands, algemene kennis en Nederlandse cultuur voor kinderen die kort in Nederland zijn of thuis een andere taal spreken.",h:["Doel: een advies vmbo-tl, havo of vwo halen","Klassen van maximaal 17; leerkracht gespecialiseerd in NT2","In het gebouw van De Meergronden; instromen kan al na groep 7"]},
+  en:{t:"bridge year",lv:["1 year → vmbo-tl / havo / vwo advice"],note:"language bridge year, outside the grid",d:"An intensive year of Dutch, general knowledge and Dutch culture for children who are new to the Netherlands or speak another language at home.",h:["Goal: reach a vmbo-tl, havo or vwo advice","Classes of at most 17; NT2-specialised teacher","Housed inside De Meergronden; can start after groep 7"]},
+  zh:{t:"衔接年",lv:["1 年 → vmbo-tl / havo / vwo 建议"],note:"语言衔接年，不在层级体系内",d:"为刚到荷兰或在家说其他语言的孩子开设的一年制强化班，学习荷兰语、常识与荷兰文化。",h:["目标：获得 vmbo-tl、havo 或 vwo 升学建议","每班最多 17 人；配备 NT2（荷兰语作为第二语言）专业老师","设在 De Meergronden 校内；小学 groep 7 后即可加入"]}},
+ {n:"Waldorf Almere",geo:["wald"],m:"Beleef wat je leert!",lv:["mavo","havo","vwo"],L:{gt:1,h:1,v:1},
+  a:"Rooseveltweg 5, 1314 SJ Almere",p:"+31 6 46 44 64 10",w:"https://www.waldorfalmere.nl",e:"info@waldorfalmere.nl",k:"vrije school waldorf antroposofisch 华德福",b:"—",
+  nl:{t:"Waldorf",note:"nieuwe school",d:"Een nieuwe middelbare school gericht op de ontwikkeling van de hele mens: hoofd, hart en handen.",h:["Elke ochtend periodeonderwijs in blokken van drie weken","Ambachten: houtbewerken, smeden, boetseren, schilderen, toneel","Neemt leerlingen aan met mavo-, havo- of vwo-advies"]},
+  en:{t:"Waldorf",note:"new school",d:"A new secondary school focused on developing the whole person: head, heart and hands.",h:["Three-week periodeonderwijs blocks each morning","Crafts: woodwork, forging, sculpting, painting, theatre","Admits pupils with mavo, havo or vwo advice"]},
+  zh:{t:"华德福",note:"新学校",d:"一所新中学，注重全人发展：头脑、心灵与双手。",h:["每天上午三周一轮的主课（periodeonderwijs）","手工课：木工、锻造、雕塑、绘画、戏剧","招收 mavo、havo 或 vwo 建议的学生"]}}
+];
+
+const CLUSTERS=[
+ {r:{nl:"alleen gymnasium",en:"gymnasium only",zh:"仅 gymnasium"},h:{nl:"Categoraal gymnasium",en:"Categorical gymnasium",zh:"独立文理中学"},p:{nl:"Alleen vwo met Latijn en Grieks, voor leerlingen met een duidelijk vwo-advies.",en:"Only vwo with Latin and Greek, for pupils with a clear vwo advice.",zh:"只开设含拉丁语和希腊语的 vwo，适合明确获得 vwo 建议的学生。"},s:["Trinitas Gymnasium"]},
+ {r:{nl:"havo → gymnasium",en:"havo → gymnasium",zh:"havo → gymnasium"},h:{nl:"Academisch",en:"Academic",zh:"学术型"},p:{nl:"Havo, atheneum en gymnasium onder één dak.",en:"Havo, atheneum and gymnasium under one roof.",zh:"havo、atheneum 与 gymnasium 同在一校。"},s:["Oostvaarders College"]},
+ {r:{nl:"mavo → vwo",en:"mavo → vwo",zh:"mavo → vwo"},h:{nl:"Theoretisch, breed",en:"Theoretical, broad",zh:"理论型（宽口径）"},p:{nl:"Van mavo tot vwo. De meeste hebben een eigen concept (Dalton, Montessori, Waldorf).",en:"From mavo up to vwo. Most have a distinct pedagogy (Dalton, Montessori, Waldorf).",zh:"从 mavo 到 vwo。多数有鲜明的教学理念（道尔顿、蒙特梭利、华德福）。"},s:["Helen Parkhurst","Park Lyceum","Poort Lyceum","Montessori Campus 0-18","Waldorf Almere"]},
+ {r:{nl:"vmbo-b → havo / vwo",en:"vmbo-b → havo / vwo",zh:"vmbo-b → havo / vwo"},h:{nl:"Brede scholengemeenschap",en:"Broad scholengemeenschap",zh:"综合型中学"},p:{nl:"Dekt bijna alle niveaus. De veilige keuze als het eindniveau nog onzeker is.",en:"Covers almost the whole range. The safe choice when the final level is still uncertain.",zh:"几乎覆盖全部层级。孩子最终层级尚不确定时的稳妥选择。"},s:["De Meergronden","Stad College","Echnaton","Arte College"]},
+ {r:{nl:"vmbo-b → mavo",en:"vmbo-b → mavo",zh:"vmbo-b → mavo"},h:{nl:"Vmbo-gericht",en:"vmbo-focused",zh:"以 vmbo 为主"},p:{nl:"Beroepsgerichte leerweg met theoretische mavo als top. Aeres voegt een groen profiel toe (dieren, planten, voeding).",en:"Vocational track with a theoretical mavo top. Aeres adds a green profile (animals, plants, food).",zh:"职业轨道，顶端为理论型 mavo。Aeres 另有绿色农林特色（动物、植物、食品）。"},s:["Aeres VMBO Almere","Buitenhout College"]},
+ {r:{nl:"alleen PrO",en:"PrO only",zh:"仅 PrO"},h:{nl:"Praktijkonderwijs",en:"Praktijkonderwijs",zh:"实践教育"},p:{nl:"Leren door te doen, richting werk en zelfstandig leven. TLV praktijkonderwijs nodig.",en:"Learning by doing, toward work and independent living. Requires a TLV praktijkonderwijs.",zh:"在实践中学习，面向就业与独立生活。需实践教育 TLV。"},s:["Pro Almere"]}
+];
+
+const SPECIAL=[
+ {h:"Aventurijn",s:{nl:"VSO · TLV nodig",en:"VSO · TLV required",zh:"VSO · 需 TLV"},p:{nl:"Voortgezet speciaal onderwijs, 12–18 jaar, voor leerlingen met een <b>lichamelijke en/of verstandelijke beperking</b>. Het onderwijs volgt de uitstroom: dagbesteding, werk of soms een vervolgopleiding. De school vraagt de TLV samen met de ouders aan bij het samenwerkingsverband.",en:"Voortgezet speciaal onderwijs, ages 12–18, for pupils with a <b>physical and/or intellectual disability</b>. Teaching is shaped by the destination: day activities, a job, or sometimes further study. The school applies for the TLV together with the parents via the samenwerkingsverband.",zh:"面向 12–18 岁、有<b>身体和/或智力障碍</b>学生的特殊中等教育（VSO）。教学根据去向设计：日间活动、就业，有时也可继续深造。学校与家长一起通过区域合作联盟申请 TLV。"}},
+ {h:"Nautilus College",s:{nl:"VSO · Eduvier · TLV nodig",en:"VSO · Eduvier · TLV required",zh:"VSO · Eduvier · 需 TLV"},p:{nl:"Voor leerlingen met <b>externaliserend gedrag of autisme</b>, van praktijkniveau via vmbo tot <b>havo/vwo</b>. Vaste lestijden, vaste mentor, klassen van maximaal 16. Drie locaties: Lierstraat, Paul Kleestraat en Radioweg.",en:"For pupils with <b>externalising behaviour or autism</b>, from praktijk level through vmbo up to <b>havo/vwo</b>. Fixed timetable, a fixed mentor, classes of at most 16. Three locations: Lierstraat, Paul Kleestraat and Radioweg.",zh:"面向<b>外化行为问题或自闭症</b>学生，层级从实践教育、vmbo 一直到 <b>havo/vwo</b>。固定课表、固定导师，每班最多 16 人。三个校区：Lierstraat、Paul Kleestraat、Radioweg。"}},
+ {h:"OPDC Almere",s:{nl:"Orthopedagogisch-didactisch centrum",en:"Orthopedagogisch-didactisch centrum",zh:"教育学-教学法中心"},p:{nl:"Ongeveer 120 leerlingen in klassen van 14–16. Een <b>tussenstap van 1–2 jaar</b> voor kinderen die nog niet klaar zijn voor een grote school (zelfvertrouwen, concentratie, dyslexie, leerachterstanden). Daarna door naar een reguliere vmbo-school.",en:"About 120 pupils in classes of 14–16. An <b>intermediate step of 1–2 years</b> for children not yet ready for a large school (confidence, concentration, dyslexia, learning delays). Pupils then move on to a regular vmbo.",zh:"约 120 名学生，每班 14–16 人。为尚未准备好进入大型中学的孩子（自信、专注、阅读障碍、学习滞后）提供<b>1–2 年的过渡</b>，之后转入普通 vmbo。"}},
+ {h:"Taalcentrum Kopklas",s:{nl:"Schakeljaar · bij De Meergronden",en:"Bridge year · at De Meergronden",zh:"衔接年 · 设在 De Meergronden"},p:{nl:"Een intensief jaar Nederlands voor kinderen die kort in Nederland zijn of thuis een andere taal spreken. Doel is het <b>advies te verhogen naar vmbo-tl, havo of vwo</b>. Maximaal 17 leerlingen per klas. Instromen kan na groep 7.",en:"An intensive year of Dutch for children who are new to the Netherlands or speak another language at home. The aim is to <b>raise the advice to vmbo-tl, havo or vwo</b>. Maximum 17 pupils per class. Pupils can join after groep 7.",zh:"为刚到荷兰或在家说其他语言的孩子开设的荷兰语强化年，目标是<b>把升学建议提高到 vmbo-tl、havo 或 vwo</b>。每班最多 17 人，小学 groep 7 后即可加入。"}}
+];
+
+const CONCEPTS=[
+ {h:{nl:"Dalton",en:"Dalton",zh:"道尔顿制"},s:"Helen Parkhurst",p:{nl:"Plannen per periode van zes weken: leerlingen plannen hun werk met de mentor. Extra: een <b>technasium</b>klas voor havo/vwo, een <b>bèta mavo</b>-klas en een route voor topsporters.",en:"Six-week planning periods: pupils plan their own work with the mentor. Extras: a <b>technasium</b> class for havo/vwo, a <b>bèta mavo</b> class, and a topsport-friendly track.",zh:"以六周为一个规划周期，学生与导师一起自主安排学业。特色：havo/vwo 的 <b>technasium</b> 技术班、<b>理科 mavo</b> 班，以及适合体育精英的路线。"}},
+ {h:{nl:"Montessori",en:"Montessori",zh:"蒙特梭利"},s:"Montessori Campus 0-18",p:{nl:"Vrijheid in gebondenheid: eigen tempo, kleine groepjes, een coach per leerling. Een doorlopende campus van baby tot 18 jaar in Nobelhorst.",en:"\"Vrijheid in gebondenheid\": own pace, small groups, a coach per pupil. A continuous campus from baby to 18 in Nobelhorst.",zh:"“有约束的自由”：自定节奏、小组学习、每位学生配教练。位于 Nobelhorst 的 0–18 岁一贯制园区。"}},
+ {h:{nl:"Waldorf (vrije school)",en:"Waldorf (vrije school)",zh:"华德福（vrije school）"},s:"Waldorf Almere",p:{nl:"Een nieuwe school. Elke ochtend periodeonderwijs in blokken van drie weken, plus ambachten: houtbewerken, smeden, boetseren en toneel. Hoofd, hart en handen.",en:"A new school. Three-week periodeonderwijs blocks each morning, plus crafts: woodwork, forging, sculpting and theatre. \"Hoofd, hart en handen.\"",zh:"新学校。每天上午三周一轮的主课，外加木工、锻造、雕塑和戏剧等手工艺课程。理念是“头脑、心灵与双手”。"}},
+ {h:{nl:"Tweetalig onderwijs (tto)",en:"Tweetalig onderwijs (tto)",zh:"双语教学（tto）"},s:"De Meergronden",p:{nl:"Ongeveer de helft van de lessen in het Engels, op mavo, havo en vwo, met een internationaal certificaat. Ook gemengde brugklassen, Experience-lessen en uitwisselingen.",en:"Around half of lessons are in English, at mavo, havo and vwo level, leading to an international certificate. Also mixed first-year classes, Experience lessons and exchanges.",zh:"mavo、havo、vwo 层级约一半课程用英语授课，毕业获国际证书。另有混合一年级、Experience 课程和国际交换。"}},
+ {h:{nl:"Kunst & cultuur",en:"Arts & culture",zh:"艺术与文化"},s:"Arte College",p:{nl:"Een schoolgebouw in Almere Poort met een aula op theaterniveau en podiumtechniek. Samenwerken vanaf dag één.",en:"A school building in Almere Poort with a theatre-grade aula and stage technique. Collaboration from day one.",zh:"位于 Almere Poort，礼堂具备剧场级舞台技术。从第一天起强调合作。"}},
+ {h:{nl:"Beroepsgericht / praktisch",en:"Vocational / hands-on",zh:"职业实践导向"},s:"Stad College · Echnaton · Aeres",p:{nl:"<b>Stad College</b> (~400 leerlingen): praktijklessen vanaf leerjaar 1, daarna een keuze uit Technologie &amp; Vakmanschap, Media/Vormgeving/ICT of Zorg &amp; Welzijn. <b>Echnaton</b>: de echTalent-route (Media, Arts, Food &amp; Health, Tech &amp; Design), een Businesshavo en combinatieklassen voor laatbloeiers. <b>Aeres</b>: het groene profiel.",en:"<b>Stad College</b> (~400 pupils): practical lessons from year 1, then a choice of Technology &amp; Craftsmanship, Media/Design/ICT, or Care &amp; Welfare. <b>Echnaton</b>: the echTalent route (Media, Arts, Food &amp; Health, Tech &amp; Design), a Businesshavo and combination classes for late bloomers. <b>Aeres</b>: the green profile.",zh:"<b>Stad College</b>（约 400 人）：一年级起有实践课，之后在技术与工艺、媒体设计与 ICT、护理与福利中选择方向。<b>Echnaton</b>：echTalent 才艺路线（媒体、艺术、食品与健康、技术与设计）、商业 havo，以及为后发型学生设的组合班。<b>Aeres</b>：绿色农林特色。"}},
+ {h:{nl:"Gestructureerd klassikaal onderwijs",en:"Structured classroom teaching",zh:"结构化课堂教学"},s:"Park Lyceum",p:{nl:"Interconfessionele school met een vaste lesopbouw (de Parkles). Taalcertificaten (Cambridge, Goethe, DELF), een programma voor muziek, drama en dans, en uitwisselingen.",en:"Interconfessional school with a fixed lesson model (the \"Parkles\"). Language certificates (Cambridge, Goethe, DELF), a music, drama and dance programme, and exchanges.",zh:"跨宗派学校，采用固定课堂模式（Parkles）。提供剑桥、歌德、DELF 语言证书，音乐、戏剧和舞蹈项目，以及国际交换。"}},
+ {h:{nl:"Differentiëren op tempo en niveau",en:"Differentiation by pace and level",zh:"按进度和难度差异化"},s:"Poort Lyceum",p:{nl:"Elke twee weken een persoonlijk mentorgesprek. Leerlingen mogen vooruitwerken in een vak of op hoger niveau werken. Volgens de school haalt 30% een diploma boven het basisschooladvies en slaagt bijna 100%.",en:"A personal mentor conversation every two weeks. Pupils may move ahead in a subject or work at a higher level. The school reports that 30% graduate above their primary-school advice and a pass rate near 100%.",zh:"每两周一次导师面谈。学生可在某一科目提前推进，或做更高层级的作业。学校自报：30% 的学生以高于小学建议的层级毕业，毕业考试通过率接近 100%。"}},
+ {h:{nl:"Academische breedte",en:"Academic breadth",zh:"学术拓展"},s:"Oostvaarders College · Trinitas",p:{nl:"<b>OVC</b>: talentklassen, een Unesco-congres, debat, de Wiskunde Olympiade, roeien en schaken. <b>Trinitas</b>: modern gymnasiumonderwijs met klassieken, filosofie en extra's van theater en debat tot robotica.",en:"<b>OVC</b>: talent classes, a UNESCO congress, debate, the Wiskunde Olympiade, rowing and chess. <b>Trinitas</b>: modern gymnasium teaching with classics, philosophy, and extras from theatre and debate to robotics.",zh:"<b>OVC</b>：天赋班、UNESCO 大会、辩论、数学奥林匹克、赛艇和国际象棋。<b>Trinitas</b>：现代文理中学教学，含古典学、哲学，以及从戏剧、辩论到机器人的拓展活动。"}}
+];
+
+const BOARDS=[
+ {h:{nl:"ASG · openbaar",en:"ASG · openbaar",zh:"ASG · 公立（openbaar）"},p:{nl:"Arte College, De Meergronden, Helen Parkhurst, Montessori Campus 0-18, Oostvaarders College, Pro Almere",en:"Arte College, De Meergronden, Helen Parkhurst, Montessori Campus 0-18, Oostvaarders College, Pro Almere",zh:"Arte College、De Meergronden、Helen Parkhurst、Montessori Campus 0-18、Oostvaarders College、Pro Almere"}},
+ {h:{nl:"Het Baken · christelijk / interconfessioneel",en:"Het Baken · christelijk / interconfessioneel",zh:"Het Baken · 基督教 / 跨宗派"},p:{nl:"Park Lyceum, Poort Lyceum, Stad College, Trinitas Gymnasium",en:"Park Lyceum, Poort Lyceum, Stad College, Trinitas Gymnasium",zh:"Park Lyceum、Poort Lyceum、Stad College、Trinitas Gymnasium"}},
+ {h:{nl:"Overige besturen",en:"Other boards",zh:"其他办学机构"},p:{nl:"Aeres (groen onderwijs), Eduvier (Nautilus College), Almere Speciaal (Aventurijn)",en:"Aeres (groen onderwijs), Eduvier (Nautilus College), Almere Speciaal (Aventurijn)",zh:"Aeres（绿色农林教育）、Eduvier（Nautilus College）、Almere Speciaal（Aventurijn）"}},
+ {h:{nl:"Niet af te leiden van de site",en:"Not determinable from the site",zh:"无法从网站判断"},p:{nl:"Echnaton, Buitenhout College, Waldorf Almere, OPDC Almere, Taalcentrum Kopklas",en:"Echnaton, Buitenhout College, Waldorf Almere, OPDC Almere, Taalcentrum Kopklas",zh:"Echnaton、Buitenhout College、Waldorf Almere、OPDC Almere、Taalcentrum Kopklas"}}
+];
+
+const ORDER=["Trinitas Gymnasium","Oostvaarders College","Waldorf Almere","Poort Lyceum","Park Lyceum","Helen Parkhurst","Montessori Campus 0-18","Arte College","De Meergronden","Echnaton","Stad College","Buitenhout College","Aeres VMBO Almere","Pro Almere"];
+const DIR_ORDER=[...ORDER,"Taalcentrum Kopklas","Nautilus College","OPDC Almere","Aventurijn"];
+const byName=n=>S.find(x=>x.n===n);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- state ---------- */
+let lang="en",level=null,cur="all",sortKey=null,sortDir=1,dirSort="default";
+let origin=null; // {pc, ll, precise, home}
+try{const s=localStorage.getItem("almere-lang");if(["nl","en","zh"].includes(s))lang=s}catch(e){}
+if(["#nl","#en","#zh"].includes(location.hash))lang=location.hash.slice(1);
+
+const $=id=>document.getElementById(id);
+const mx=$("matrix"),ladder=$("ladder"),pick=$("pick"),chips=$("chips"),q=$("q"),cards=$("cards"),count=$("count"),thead=$("thead"),dirSel=$("dirSort");
+
+/* ---------- geometry & travel model ---------- */
+function hav(a,b){const R=6371,r=Math.PI/180;const dLa=(b[0]-a[0])*r,dLo=(b[1]-a[1])*r;const h=Math.sin(dLa/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+/* Calibrated on 15 Google Maps routes inside Almere: bike ≈ 1 + 3.9 min per straight km; walk ≈ 2 + 15.5 min/km; transit ≈ 13 + 3.4 min/km (rough). Route km ≈ straight × 1.3. */
+function trip(s){
+  if(!origin||!s.geo.length)return null;
+  let best=null;
+  s.geo.forEach((g,i)=>{const d=hav(origin.ll,GEO[g]);if(!best||d<best.d)best={d,i}});
+  const d=best.d;
+  const r={km:Math.round(d*1.3*10)/10,bike:Math.max(2,Math.round(1+3.87*d)),walk:Math.max(2,Math.round(2+15.5*d)),site:s.geoNames?s.geoNames[best.i]:null,si:best.i};
+  const m=origin.home&&MEASURED[s.n];
+  if(m){r.measured=true;if(m.bike)r.bike=m.bike;if(m.walkOnly){r.walkOnly=true;r.walk=m.walkOnly;r.ptSort=m.walkOnly}else{r.pt=m.tot;r.ptSort=m.tot;r.m=m}if(s.geoNames)r.site=s.geoNames[0]}
+  else{const est=Math.round(13+3.4*d);if(r.walk<=est+3){r.walkOnly=true;r.ptSort=r.walk}else{r.pt=est;r.ptSort=est;r.est=true}}
+  return r;
+}
+function gmaps(s,r){
+  const dest=s.geoNames?s.a.split(" · ")[r.si||0].replace(/, Almere$/,"")+", Almere":s.a.replace(/ \(.*\)$/,"");
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin.pc+" Almere")}&destination=${encodeURIComponent(dest)}&travelmode=transit`;
+}
+function cellKm(r){const t=T[lang];return r?`<b>${r.km.toFixed(1)}</b> ${t.km}`:`<span class="na">—</span>`}
+function cellBike(r){const t=T[lang];return r?`<b>${r.bike}</b> ${t.min}`+(r.site?`<small>${t.site1} ${r.site}</small>`:""):`<span class="na">—</span>`}
+function cellPt(r,s){
+  const t=T[lang];if(!r)return `<span class="na">—</span>`;
+  if(r.walkOnly)return `<b>${r.walk}</b> ${t.min}<small>${t.walkOnly}</small>`;
+  if(r.m){const m=r.m;return `<b>${m.tot}</b> ${t.min}<small>${m.train?t.ptTrain:t.pt} ${m.pt} + ${t.walk} ${m.walk}${m.wait?` + ${t.wait} ${m.wait}`:""} · ${m.line}</small>`}
+  return `<b>≈ ${r.pt}</b> ${t.min}<small><a href="${gmaps(s,r)}" target="_blank" rel="noopener">${t.route} ↗</a></small>`;
+}
+
+/* ---------- postcode ---------- */
+function normPc(v){return v.toUpperCase().replace(/\s+/g,"")}
+async function sha(txt){try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(txt));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch(e){return ""}}
+async function setPostcode(raw,save){
+  const v=normPc(raw||"");const st=$("pcStatus");const t=T[lang];
+  if(!v){origin=null;st.className="status";st.textContent=t.pcEmpty;renderTable();renderCards();return}
+  const m=v.match(/^(\d{4})([A-Z])?([A-Z])?$/);
+  let ll=null,precise=false;
+  if(m){if(m[2]&&PC5[m[1]+m[2]]){ll=PC5[m[1]+m[2]];precise=true}else if(PC4[m[1]])ll=PC4[m[1]]}
+  if(!ll){origin=null;st.className="status bad";st.textContent=t.pcBad;renderTable();renderCards();return}
+  const pretty=m[1]+(m[2]?" "+m[2]+(m[3]||""):"");
+  const home=(await sha(v))===HOME_HASH;
+  origin={pc:pretty,ll,precise,home};
+  if(save){try{localStorage.setItem("almere-pc",v)}catch(e){}}
+  showPcStatus();
+  if(sortKey===null&&save){sortKey="km";sortDir=1}
+  renderTable();renderCards();
+}
+function showPcStatus(){
+  const st=$("pcStatus"),t=T[lang];
+  if(!origin){const v=normPc($("pc").value);st.className=v?"status bad":"status";st.textContent=v?t.pcBad:t.pcEmpty;return}
+  st.className="status ok";st.textContent=origin.home?t.pcOkHome(origin.pc):t.pcOk(origin.pc,origin.precise?t.area5:t.area4);
+}
+
+/* ---------- table ---------- */
+const HEAD=[{k:"name",lab:()=>T[lang].thSchool},...LADDER.map(x=>({k:x.k,lab:()=>x.th,c:true})),{k:"note",lab:()=>T[lang].thNotes},{k:"km",lab:()=>T[lang].thKm,trav:true},{k:"bike",lab:()=>T[lang].thBike},{k:"pt",lab:()=>T[lang].thPt}];
+function renderHead(){
+  thead.innerHTML=HEAD.map(h=>{const as=sortKey===h.k?(sortDir===1?"ascending":"descending"):"none";
+    const arr=sortKey===h.k?(sortDir===1?"▲":"▼"):"↕";
+    return `<th class="${h.c?"c":""}${h.trav?" trav":""}" aria-sort="${as}" data-k="${h.k}"><button type="button" id="sort-${h.k}">${h.lab()} <span class="arr" aria-hidden="true">${arr}</span></button></th>`}).join("");
+}
+function sortVal(n,k){
+  const s=byName(n),L=s[lang];
+  if(k==="name")return n.toLowerCase();
+  if(k==="note")return L.note.toLowerCase();
+  if(COLS.includes(k)){const v=s.L[k];return v===1?0:v===2?1:2}
+  const r=trip(s);if(!r)return Infinity;
+  if(k==="km")return r.km;if(k==="bike")return r.bike;if(k==="pt")return r.ptSort;
+}
+function sortedRows(){
+  const rows=[...ORDER];if(!sortKey)return rows;
+  const idx=n=>ORDER.indexOf(n);
+  return rows.sort((a,b)=>{const va=sortVal(a,sortKey),vb=sortVal(b,sortKey);
+    if(va===vb)return idx(a)-idx(b);
+    if(va===Infinity)return 1;if(vb===Infinity)return -1;
+    return (typeof va==="string"?va.localeCompare(vb):va-vb)*sortDir});
+}
+function renderTable(){
+  renderHead();
+  mx.innerHTML=sortedRows().map(n=>{const s=byName(n),L=s[lang],r=trip(s);
+    return `<tr data-name="${esc(n)}"><td class="name">${esc(n)}<small>${esc(L.t)}</small></td>`+
+      COLS.map(c=>{const v=s.L[c];return `<td class="c"><i class="dot${v===1?" on":v===2?" part":""}"></i></td>`}).join("")+
+      `<td class="note">${esc(L.note)}</td><td class="num trav">${cellKm(r)}</td><td class="num">${cellBike(r)}</td><td class="num">${cellPt(r,s)}</td></tr>`}).join("");
+  $("tripNote").innerHTML=origin?(origin.home?T[lang].noteHome:T[lang].noteEst):"";
+  applyLevel();
+}
+thead.addEventListener("click",e=>{const th=e.target.closest("th");if(!th)return;const k=th.dataset.k;
+  if(sortKey===k){if(sortDir===1)sortDir=-1;else{sortKey=null;sortDir=1}}else{sortKey=k;sortDir=1}
+  renderTable();const b=$("sort-"+k);if(b)b.focus()});
+
+/* ---------- ladder ---------- */
+function applyLevel(){
+  const t=T[lang];
+  [...ladder.children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===level));
+  const ci=level?COLS.indexOf(level)+1:-1;
+  thead.querySelectorAll("th").forEach((th,i)=>th.classList.toggle("hot",i===ci));
+  [...mx.rows].forEach(tr=>{const s=byName(tr.dataset.name);
+    tr.classList.toggle("dim",!!level&&!s.L[level]);
+    [...tr.cells].forEach((td,i)=>td.classList.toggle("hot",i===ci))});
+  if(level){
+    const yes=sortedRows().filter(n=>byName(n).L[level]);
+    const cav=yes.filter(n=>byName(n).L[level]===2);
+    const sep=lang==="zh"?"、":", ";
+    const lab=LADDER.find(x=>x.k===level).full[lang];
+    pick.innerHTML=t.pickRes(yes.length,lab,yes.join(sep))+(cav.length?` <span class="muted">${t.pickCav(cav.join(sep))}</span>`:"")+`<button type="button" class="clear" id="lad-clear">${t.clear}</button>`;
+  } else pick.innerHTML=`<span class="muted">${t.pickHint}</span>`;
+}
+function setLevel(k){level=COLS.includes(k)?k:null;cur=level||"all";
+  [...chips.children].forEach(c=>c.setAttribute("aria-pressed",c.dataset.k===cur));applyLevel();renderCards()}
+ladder.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;setLevel(b.dataset.k===level?null:b.dataset.k)});
+pick.addEventListener("click",e=>{if(e.target.id==="lad-clear")setLevel(null)});
+
+/* ---------- directory ---------- */
+function renderCards(){
+  const t=T[lang],term=q.value.trim().toLowerCase();
+  let list=S.filter(s=>{
+    const ok=cur==="all"||(cur==="sp"?s.sp:!!s.L[cur]);if(!ok)return false;if(!term)return true;
+    const txt=[s.n,s.m,s.k,s.a,...(s.lv||[]),...["nl","en","zh"].flatMap(l=>[s[l].t,s[l].d,s[l].note,...s[l].h,...(s[l].lv||[])])].join(" ").toLowerCase();
+    return txt.includes(term)});
+  const di=n=>DIR_ORDER.indexOf(n);
+  const num=(s,f)=>{const r=trip(s);return r?f(r):Infinity};
+  if(dirSort==="az")list.sort((a,b)=>a.n.localeCompare(b.n));
+  else if(dirSort==="km")list.sort((a,b)=>num(a,r=>r.km)-num(b,r=>r.km)||di(a.n)-di(b.n));
+  else if(dirSort==="bike")list.sort((a,b)=>num(a,r=>r.bike)-num(b,r=>r.bike)||di(a.n)-di(b.n));
+  else if(dirSort==="pt")list.sort((a,b)=>num(a,r=>r.ptSort)-num(b,r=>r.ptSort)||di(a.n)-di(b.n));
+  else list.sort((a,b)=>di(a.n)-di(b.n));
+  count.textContent=t.count(list.length,S.length);
+  cards.innerHTML=list.length?list.map(s=>{const L=s[lang],lv=L.lv||s.lv,r=trip(s);
+    const tripBox=origin?(r?`<div class="trip-card"><span>${t.fromHome}</span><span>${cellKm(r)}</span><span>${t.bike} ${cellBike(r).replace(/<small>.*<\/small>/,"")}</span><span>${t.pt} ${cellPt(r,s).replace(/<small>/," <span class='muted'>").replace(/<\/small>/,"</span>")}</span></div>`:`<div class="trip-card"><span>${t.fromHome}</span><span>${t.multi}</span></div>`):"";
+    return `
+   <article class="card">
+     <div class="top"><h3>${esc(s.n)}</h3><span class="tag">${esc(L.t)}</span></div>
+     <p class="motto">${esc(s.m)}</p>
+     <div class="lv">${lv.map(l=>`<span class="${s.sp?"sp":""}">${esc(l)}</span>`).join("")}</div>
+     ${tripBox}
+     <p class="desc">${esc(L.d)}</p>
+     <ul class="hl">${L.h.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+     <div class="contact">
+       <div><b>${t.addr}</b>${esc(s.a)}</div>
+       <div><b>${t.phone}</b>${esc(s.p)}</div>
+       <div><b>${t.email}</b>${esc(s.e)}</div>
+       <div><b>${t.board}</b>${esc(s.b)}${s.b!=="—"?t.inferred:""}</div>
+       <div><a href="${s.w}" target="_blank" rel="noopener">${t.site}</a></div>
+     </div>
+   </article>`}).join(""):`<p class="empty">${t.empty}</p>`;
+}
+chips.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  cur=b.dataset.k;level=COLS.includes(cur)?cur:null;
+  [...chips.children].forEach(c=>c.setAttribute("aria-pressed",c===b));applyLevel();renderCards()});
+q.addEventListener("input",renderCards);
+dirSel.addEventListener("change",()=>{dirSort=dirSel.value;renderCards()});
+
+/* ---------- static / language ---------- */
+function renderStatic(){
+  const t=T[lang];
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-t]").forEach(el=>{el.innerHTML=t[el.dataset.t]});
+  document.querySelectorAll(".lang button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===lang));
+  ladder.setAttribute("aria-label",t.ladderLabel);chips.setAttribute("aria-label",t.chipsLabel);
+  q.placeholder=t.search;q.setAttribute("aria-label",t.search);
+  $("pc").placeholder=t.pcPh;
+  ladder.innerHTML=LADDER.map(x=>`<button type="button" id="lad-${x.k}" data-k="${x.k}" aria-pressed="${x.k===level}"><b>${x.b}</b>${x[lang]}</button>`).join("");
+  $("clusterList").innerHTML=CLUSTERS.map(c=>`<div class="cluster"><div class="range">${c.r[lang]}</div><h3>${c.h[lang]}</h3><p>${c.p[lang]}</p><ul>${c.s.map(n=>`<li>${n}</li>`).join("")}</ul></div>`).join("");
+  $("specialList").innerHTML=SPECIAL.map(r=>`<div class="row"><h3>${r.h}<small>${r.s[lang]}</small></h3><p>${r.p[lang]}</p></div>`).join("");
+  $("conceptList").innerHTML=CONCEPTS.map(r=>`<div class="row"><h3>${r.h[lang]}<small>${r.s}</small></h3><p>${r.p[lang]}</p></div>`).join("");
+  $("boardList").innerHTML=BOARDS.map(b=>`<div class="board"><h3>${b.h[lang]}</h3><p>${b.p[lang]}</p></div>`).join("");
+  const F=[["all",t.all],["g","gymnasium"],["v","vwo"],["h","havo"],["gt","vmbo-g/t · mavo"],["k","vmbo-k"],["b","vmbo-b"],["pro","PrO"],["sp",t.special]];
+  chips.innerHTML=F.map(([k,l])=>`<button type="button" class="chip" id="f-${k}" data-k="${k}" aria-pressed="${k===cur}">${l}</button>`).join("");
+  dirSel.setAttribute("aria-label",t.sortBy);
+  dirSel.innerHTML=[["default",t.sDefault],["az",t.sAz],["km",t.sKm],["bike",t.sBike],["pt",t.sPt]].map(([v,l])=>`<option value="${v}"${v===dirSort?" selected":""}>${t.sortBy}: ${l}</option>`).join("");
+  showPcStatus();
+  renderTable();renderCards();
+}
+document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{
+  lang=b.dataset.l;try{localStorage.setItem("almere-lang",lang)}catch(e){}renderStatic()}));
+
+$("pcForm").addEventListener("submit",e=>{e.preventDefault();setPostcode($("pc").value,true)});
+$("pc").addEventListener("input",()=>{const v=normPc($("pc").value);if(/^\d{4}[A-Z]{2}$/.test(v))setPostcode(v,true);else if(!v)setPostcode("",false)});
+
+renderStatic();
+(function(){let saved="";try{saved=localStorage.getItem("almere-pc")||""}catch(e){}
+  if(saved){$("pc").value=saved.replace(/^(\d{4})([A-Z]{2})$/,"$1 $2");setPostcode(saved,false).then(()=>{if(sortKey===null){sortKey="km";sortDir=1;renderTable()}})}})();
+</script>
+</body>
+</html>
